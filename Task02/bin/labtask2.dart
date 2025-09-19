@@ -49,7 +49,9 @@ void main() {
     print('\n=== Student Management System ===');
     print('1. Add Student');
     print('2. Show Data');
-    print('3. Exit');
+    print('3. Search Student By Name');
+    print('4. Filter Hobbies & Subject');
+    print('5. Exit');
     stdout.write('Choose an option: ');
     String? choice = stdin.readLineSync();
 
@@ -61,6 +63,12 @@ void main() {
         showData(students);
         break;
       case '3':
+        searchStudentByName(students);
+        break;
+      case '4':
+        filterHobbiesAndSubjects(students);
+        break;
+      case '5':
         print('\nExiting program... Goodbye!');
         return;
       default:
@@ -109,7 +117,7 @@ void addStudent(List<Student> students) {
     subjects: subjects,
   ));
 
-  print('\n Student added successfully!');
+  print('\nStudent added successfully!');
 }
 
 void showData(List<Student> students) {
@@ -124,7 +132,67 @@ void showData(List<Student> students) {
     print('-------------------------');
   }
 
-  //  Export to JSON-like format just for display
+  // Export to JSON-like format just for display
   String jsonData = jsonEncode(students.map((s) => s.toMap()).toList());
   print('JSON Export:\n$jsonData');
+}
+
+void searchStudentByName(List<Student> students) {
+  if (students.isEmpty) {
+    print('\nNo students found to search.');
+    return;
+  }
+
+  stdout.write('Enter name to search: ');
+  String searchName = (stdin.readLineSync() ?? '').trim();
+
+  if (searchName.isEmpty) {
+    print('Search name cannot be empty.');
+    return;
+  }
+
+  List<Student> matchedStudents = students
+      .where((s) => s.name.toLowerCase() == searchName.toLowerCase())
+      .toList();
+
+  if (matchedStudents.isEmpty) {
+    print('\nNo student found with name "$searchName".');
+  } else {
+    print('\n=== Search Results ===');
+    for (var s in matchedStudents) {
+      print(s);
+      print('-------------------------');
+    }
+  }
+}
+
+void filterHobbiesAndSubjects(List<Student> students) {
+  if (students.isEmpty) {
+    print('\nNo students found to filter.');
+    return;
+  }
+
+  stdout.write('Enter hobby or subject to filter: ');
+  String filter = (stdin.readLineSync() ?? '').trim().toLowerCase();
+
+  if (filter.isEmpty) {
+    print('Filter cannot be empty.');
+    return;
+  }
+
+  List<Student> filteredStudents = students.where((s) {
+    bool hobbyMatch = s.hobbies.any((h) => h.toLowerCase() == filter);
+    bool subjectMatch = s.subjects.any((subj) => subj.toLowerCase() == filter);
+    return hobbyMatch || subjectMatch;
+  }).toList();
+
+  if (filteredStudents.isEmpty) {
+    print('\nNo students found with hobby/subject "$filter".');
+  } else {
+    print('\n=== Filtered Results ===');
+    for (var s in filteredStudents) {
+      print(s);
+      print('-------------------------');
+    }
+  }
 }
