@@ -1,0 +1,31 @@
+name: ludo_app
+description: A simple Ludo dice game built in Flutter.
+
+publish_to: 'none' # Remove this if publishing to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/dice1.png
+    - assets/dice2.png
+    - assets/dice3.png
+    - assets/dice4.png
+    - assets/dice5.png
+    - assets/dice6.png
