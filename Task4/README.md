@@ -1,16 +1,2 @@
-# profileapp
-
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+| ![Task4p2](https://github.com/user-attachments/assets/ae7e8773-db02-4f45-a2e3-66885cf751a2) | ![Task4p3](https://github.com/user-attachments/assets/dfa74a68-568c-4824-ac52-e3baed5ad6a4) |
+| ![Task4p1](https://github.com/user-attachments/assets/79b32e9b-15a9-49bc-a82a-393875943b9d) | ![Task4p4](https://github.com/user-attachments/assets/3f4bf994-1ac7-4aa8-869c-f94c9f7ffec4) |
