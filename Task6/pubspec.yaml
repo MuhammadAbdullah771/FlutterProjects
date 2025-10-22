@@ -1,0 +1,26 @@
+name: cgpa_calculator_app
+description: A new Flutter project for CGPA calculation.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # SQLite database ke liye
+  sqflite: ^2.3.0
+  # Database path management ke liye
+  path: ^1.8.3
+  # JSON handling ke liye (built-in Dart support bhi kafi hai, lekin agar complex ho toh)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
