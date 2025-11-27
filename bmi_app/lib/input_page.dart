@@ -17,6 +17,25 @@ class _InputPageState extends State<InputPage> {
   int age = 20;
   Gender? selectedGender;
 
+  Widget buildGestureDetector(VoidCallback onTap, Widget child) {
+    return GestureDetector(
+      onTap: onTap,
+      child: child,
+    );
+  }
+
+  Widget buildGenderCard(Gender gender, IconData icon, String label) {
+    return Expanded(
+      child: buildGestureDetector(
+        () => setState(() => selectedGender = gender),
+        RepeatContainerCode(
+          color: selectedGender == gender ? Color(0xFF323244) : Color(0xFF1D1E33),
+          child: IconText(icon: icon, text: label, iconColor: Colors.white),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,24 +49,8 @@ class _InputPageState extends State<InputPage> {
             Expanded(
               child: Row(
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => selectedGender = Gender.male),
-                      child: RepeatContainerCode(
-                        color: selectedGender == Gender.male ? Color(0xFF323244) : Color(0xFF1D1E33),
-                        child: IconText(icon: Icons.male, text: "MALE", iconColor: Colors.white),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => selectedGender = Gender.female),
-                      child: RepeatContainerCode(
-                        color: selectedGender == Gender.female ? Color(0xFF323244) : Color(0xFF1D1E33),
-                        child: IconText(icon: Icons.female, text: "FEMALE", iconColor: Colors.white),
-                      ),
-                    ),
-                  ),
+                  buildGenderCard(Gender.male, Icons.male, "MALE"),
+                  buildGenderCard(Gender.female, Icons.female, "FEMALE"),
                 ],
               ),
             ),
