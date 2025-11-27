@@ -13,6 +13,7 @@ class _InputPageState extends State<InputPage> {
   int height = 180;
   int weight = 60;
   int age = 20;
+  String? selectedGender;
 
   @override
   Widget build(BuildContext context) {
@@ -28,18 +29,40 @@ class _InputPageState extends State<InputPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: RepeatContainerCode(
-                      child: IconText(
-                        icon: Icons.male,
-                        text: "MALE",
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedGender = 'male';
+                        });
+                      },
+                      child: RepeatContainerCode(
+                        color: selectedGender == 'male'
+                            ? Color(0xFF323244)
+                            : Color(0xFF1D1E33),
+                        child: IconText(
+                          icon: Icons.male,
+                          text: "MALE",
+                          iconColor: Colors.white,
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
-                    child: RepeatContainerCode(
-                      child: IconText(
-                        icon: Icons.female,
-                        text: "FEMALE",
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedGender = 'female';
+                        });
+                      },
+                      child: RepeatContainerCode(
+                        color: selectedGender == 'female'
+                            ? Color(0xFF323244)
+                            : Color(0xFF1D1E33),
+                        child: IconText(
+                          icon: Icons.female,
+                          text: "FEMALE",
+                          iconColor: Colors.white,
+                        ),
                       ),
                     ),
                   ),
