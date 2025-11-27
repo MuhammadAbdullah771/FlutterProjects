@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bmi_app/repeat_container_code.dart';
 import 'package:bmi_app/icon_text.dart';
+import 'package:bmi_app/const.dart';
 
 enum Gender { male, female }
 
@@ -12,9 +13,9 @@ class InputPage extends StatefulWidget {
 }
 
 class _InputPageState extends State<InputPage> {
-  int height = 180;
-  int weight = 60;
-  int age = 20;
+  int height = AppDefaults.defaultHeight;
+  int weight = AppDefaults.defaultWeight;
+  int age = AppDefaults.defaultAge;
   Gender? selectedGender;
 
   Widget buildGestureDetector(VoidCallback onTap, Widget child) {
@@ -29,8 +30,8 @@ class _InputPageState extends State<InputPage> {
       child: buildGestureDetector(
         () => setState(() => selectedGender = gender),
         RepeatContainerCode(
-          color: selectedGender == gender ? Color(0xFF323244) : Color(0xFF1D1E33),
-          child: IconText(icon: icon, text: label, iconColor: Colors.white),
+          color: selectedGender == gender ? AppColors.activeContainerColor : AppColors.containerColor,
+          child: IconText(icon: icon, text: label, iconColor: AppColors.textColor),
         ),
       ),
     );
@@ -40,7 +41,7 @@ class _InputPageState extends State<InputPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("BMI CALCULATOR"),
+        title: Text(AppStrings.appTitle),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -49,25 +50,25 @@ class _InputPageState extends State<InputPage> {
             Expanded(
               child: Row(
                 children: [
-                  buildGenderCard(Gender.male, Icons.male, "MALE"),
-                  buildGenderCard(Gender.female, Icons.female, "FEMALE"),
+                  buildGenderCard(Gender.male, Icons.male, AppStrings.male),
+                  buildGenderCard(Gender.female, Icons.female, AppStrings.female),
                 ],
               ),
             ),
             Expanded(
               child: RepeatContainerCode(
-                padding: EdgeInsets.symmetric(horizontal: 15.0),
+                padding: EdgeInsets.symmetric(horizontal: AppSizes.defaultPadding),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "HEIGHT",
+                      AppStrings.height,
                       style: TextStyle(
-                        fontSize: 20.0,
-                        color: Colors.white,
+                        fontSize: AppSizes.mediumTextSize,
+                        color: AppColors.textColor,
                       ),
                     ),
-                    SizedBox(height: 10.0),
+                    SizedBox(height: AppSizes.mediumSpacing),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -76,28 +77,28 @@ class _InputPageState extends State<InputPage> {
                         Text(
                           height.toString(),
                           style: TextStyle(
-                            fontSize: 50.0,
+                            fontSize: AppSizes.largeTextSize,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppColors.textColor,
                           ),
                         ),
-                        SizedBox(width: 5.0),
+                        SizedBox(width: AppSizes.smallSpacing),
                         Text(
-                          "cm",
+                          AppStrings.cm,
                           style: TextStyle(
-                            fontSize: 20.0,
-                            color: Colors.white,
+                            fontSize: AppSizes.mediumTextSize,
+                            color: AppColors.textColor,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 20.0),
+                    SizedBox(height: AppSizes.largeSpacing),
                     Slider(
                       value: height.toDouble(),
-                      min: 120.0,
-                      max: 220.0,
-                      activeColor: Colors.red,
-                      inactiveColor: Colors.white,
+                      min: AppDefaults.heightMin,
+                      max: AppDefaults.heightMax,
+                      activeColor: AppColors.sliderActiveColor,
+                      inactiveColor: AppColors.sliderInactiveColor,
                       onChanged: (double newValue) {
                         setState(() {
                           height = newValue.round();
@@ -117,22 +118,22 @@ class _InputPageState extends State<InputPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "WEIGHT",
+                            AppStrings.weight,
                             style: TextStyle(
-                              fontSize: 20.0,
-                              color: Colors.white,
+                              fontSize: AppSizes.mediumTextSize,
+                              color: AppColors.textColor,
                             ),
                           ),
-                          SizedBox(height: 10.0),
+                          SizedBox(height: AppSizes.mediumSpacing),
                           Text(
                             weight.toString(),
                             style: TextStyle(
-                              fontSize: 50.0,
+                              fontSize: AppSizes.largeTextSize,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: AppColors.textColor,
                             ),
                           ),
-                          SizedBox(height: 20.0),
+                          SizedBox(height: AppSizes.largeSpacing),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -142,20 +143,20 @@ class _InputPageState extends State<InputPage> {
                                     weight--;
                                   });
                                 },
-                                backgroundColor: Color(0xFF4C4F5E),
+                                backgroundColor: AppColors.buttonBackground,
                                 mini: true,
-                                child: Icon(Icons.remove, color: Colors.white),
+                                child: Icon(Icons.remove, color: AppColors.textColor),
                               ),
-                              SizedBox(width: 20.0),
+                              SizedBox(width: AppSizes.largeSpacing),
                               FloatingActionButton(
                                 onPressed: () {
                                   setState(() {
                                     weight++;
                                   });
                                 },
-                                backgroundColor: Color(0xFF4C4F5E),
+                                backgroundColor: AppColors.buttonBackground,
                                 mini: true,
-                                child: Icon(Icons.add, color: Colors.white),
+                                child: Icon(Icons.add, color: AppColors.textColor),
                               ),
                             ],
                           ),
@@ -169,22 +170,22 @@ class _InputPageState extends State<InputPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "AGE",
+                            AppStrings.age,
                             style: TextStyle(
-                              fontSize: 20.0,
-                              color: Colors.white,
+                              fontSize: AppSizes.mediumTextSize,
+                              color: AppColors.textColor,
                             ),
                           ),
-                          SizedBox(height: 10.0),
+                          SizedBox(height: AppSizes.mediumSpacing),
                           Text(
                             age.toString(),
                             style: TextStyle(
-                              fontSize: 50.0,
+                              fontSize: AppSizes.largeTextSize,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: AppColors.textColor,
                             ),
                           ),
-                          SizedBox(height: 20.0),
+                          SizedBox(height: AppSizes.largeSpacing),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -194,20 +195,20 @@ class _InputPageState extends State<InputPage> {
                                     age--;
                                   });
                                 },
-                                backgroundColor: Color(0xFF4C4F5E),
+                                backgroundColor: AppColors.buttonBackground,
                                 mini: true,
-                                child: Icon(Icons.remove, color: Colors.white),
+                                child: Icon(Icons.remove, color: AppColors.textColor),
                               ),
-                              SizedBox(width: 20.0),
+                              SizedBox(width: AppSizes.largeSpacing),
                               FloatingActionButton(
                                 onPressed: () {
                                   setState(() {
                                     age++;
                                   });
                                 },
-                                backgroundColor: Color(0xFF4C4F5E),
+                                backgroundColor: AppColors.buttonBackground,
                                 mini: true,
-                                child: Icon(Icons.add, color: Colors.white),
+                                child: Icon(Icons.add, color: AppColors.textColor),
                               ),
                             ],
                           ),
