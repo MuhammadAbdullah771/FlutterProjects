@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bmi_app/repeat_container_code.dart';
 import 'package:bmi_app/icon_text.dart';
 import 'package:bmi_app/const.dart';
+import 'package:bmi_app/result_page.dart';
 
 enum Gender { male, female }
 
@@ -50,9 +51,21 @@ class _InputPageState extends State<InputPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                FloatingActionButton(onPressed: onDecrement, backgroundColor: AppColors.buttonBackground, mini: true, child: Icon(Icons.remove, color: AppColors.textColor)),
+                FloatingActionButton(
+                  heroTag: "${label}_decrement",
+                  onPressed: onDecrement,
+                  backgroundColor: AppColors.buttonBackground,
+                  mini: true,
+                  child: Icon(Icons.remove, color: AppColors.textColor),
+                ),
                 SizedBox(width: AppSizes.largeSpacing),
-                FloatingActionButton(onPressed: onIncrement, backgroundColor: AppColors.buttonBackground, mini: true, child: Icon(Icons.add, color: AppColors.textColor)),
+                FloatingActionButton(
+                  heroTag: "${label}_increment",
+                  onPressed: onIncrement,
+                  backgroundColor: AppColors.buttonBackground,
+                  mini: true,
+                  child: Icon(Icons.add, color: AppColors.textColor),
+                ),
               ],
             ),
           ],
@@ -151,6 +164,38 @@ class _InputPageState extends State<InputPage> {
                   buildCounterCard(AppStrings.weight, weight, () => setState(() => weight--), () => setState(() => weight++)),
                   buildCounterCard(AppStrings.age, age, () => setState(() => age--), () => setState(() => age++)),
                 ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSizes.defaultPadding, vertical: AppSizes.mediumSpacing),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ResultPage(),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 60.0,
+                  decoration: BoxDecoration(
+                    color: AppColors.sliderActiveColor,
+                    borderRadius: BorderRadius.circular(AppSizes.borderRadius),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "CALCULATE",
+                      style: TextStyle(
+                        fontSize: AppSizes.mediumTextSize,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textColor,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
