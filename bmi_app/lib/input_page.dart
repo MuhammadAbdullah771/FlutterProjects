@@ -37,6 +37,30 @@ class _InputPageState extends State<InputPage> {
     );
   }
 
+  Widget buildCounterCard(String label, int value, VoidCallback onDecrement, VoidCallback onIncrement) {
+    return Expanded(
+      child: RepeatContainerCode(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(label, style: TextStyle(fontSize: AppSizes.mediumTextSize, color: AppColors.textColor, letterSpacing: 1.2)),
+            SizedBox(height: AppSizes.mediumSpacing),
+            Text(value.toString(), style: TextStyle(fontSize: AppSizes.largeTextSize, fontWeight: FontWeight.bold, color: AppColors.textColor, letterSpacing: 1.0)),
+            SizedBox(height: AppSizes.largeSpacing),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FloatingActionButton(onPressed: onDecrement, backgroundColor: AppColors.buttonBackground, mini: true, child: Icon(Icons.remove, color: AppColors.textColor)),
+                SizedBox(width: AppSizes.largeSpacing),
+                FloatingActionButton(onPressed: onIncrement, backgroundColor: AppColors.buttonBackground, mini: true, child: Icon(Icons.add, color: AppColors.textColor)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,110 +148,8 @@ class _InputPageState extends State<InputPage> {
             Expanded(
               child: Row(
                 children: [
-                  Expanded(
-                    child: RepeatContainerCode(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            AppStrings.weight,
-                            style: TextStyle(
-                              fontSize: AppSizes.mediumTextSize,
-                              color: AppColors.textColor,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.mediumSpacing),
-                          Text(
-                            weight.toString(),
-                            style: TextStyle(
-                              fontSize: AppSizes.largeTextSize,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textColor,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.largeSpacing),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              FloatingActionButton(
-                                onPressed: () {
-                                  setState(() {
-                                    weight--;
-                                  });
-                                },
-                                backgroundColor: AppColors.buttonBackground,
-                                mini: true,
-                                child: Icon(Icons.remove, color: AppColors.textColor),
-                              ),
-                              SizedBox(width: AppSizes.largeSpacing),
-                              FloatingActionButton(
-                                onPressed: () {
-                                  setState(() {
-                                    weight++;
-                                  });
-                                },
-                                backgroundColor: AppColors.buttonBackground,
-                                mini: true,
-                                child: Icon(Icons.add, color: AppColors.textColor),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: RepeatContainerCode(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            AppStrings.age,
-                            style: TextStyle(
-                              fontSize: AppSizes.mediumTextSize,
-                              color: AppColors.textColor,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.mediumSpacing),
-                          Text(
-                            age.toString(),
-                            style: TextStyle(
-                              fontSize: AppSizes.largeTextSize,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textColor,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.largeSpacing),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              FloatingActionButton(
-                                onPressed: () {
-                                  setState(() {
-                                    age--;
-                                  });
-                                },
-                                backgroundColor: AppColors.buttonBackground,
-                                mini: true,
-                                child: Icon(Icons.remove, color: AppColors.textColor),
-                              ),
-                              SizedBox(width: AppSizes.largeSpacing),
-                              FloatingActionButton(
-                                onPressed: () {
-                                  setState(() {
-                                    age++;
-                                  });
-                                },
-                                backgroundColor: AppColors.buttonBackground,
-                                mini: true,
-                                child: Icon(Icons.add, color: AppColors.textColor),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  buildCounterCard(AppStrings.weight, weight, () => setState(() => weight--), () => setState(() => weight++)),
+                  buildCounterCard(AppStrings.age, age, () => setState(() => age--), () => setState(() => age++)),
                 ],
               ),
             ),
