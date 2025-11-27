@@ -170,10 +170,32 @@ class _InputPageState extends State<InputPage> {
               padding: EdgeInsets.symmetric(horizontal: AppSizes.defaultPadding, vertical: AppSizes.mediumSpacing),
               child: GestureDetector(
                 onTap: () {
+                  double bmi = weight / ((height / 100) * (height / 100));
+                  String result;
+                  String interpretation;
+
+                  if (bmi < 18.5) {
+                    result = "Underweight";
+                    interpretation = "BMI is Low You Should have to Work More";
+                  } else if (bmi < 25) {
+                    result = "Normal";
+                    interpretation = "You have a normal body weight. Good job!";
+                  } else if (bmi < 30) {
+                    result = "Overweight";
+                    interpretation = "BMI is High You Should have to Work More";
+                  } else {
+                    result = "Obese";
+                    interpretation = "BMI is Very High You Should have to Work More";
+                  }
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ResultPage(),
+                      builder: (context) => ResultPage(
+                        bmi: bmi,
+                        result: result,
+                        interpretation: interpretation,
+                      ),
                     ),
                   );
                 },
