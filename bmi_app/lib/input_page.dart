@@ -1,30 +1,6 @@
 import 'package:flutter/material.dart';
-
-class RepeatContainerCode extends StatelessWidget {
-  final EdgeInsetsGeometry? padding;
-  final Widget? child;
-  final Color? color;
-
-  const RepeatContainerCode({
-    this.padding,
-    this.child,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: padding ?? EdgeInsets.all(15.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color ?? Color(0xFF1D1E33),
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
+import 'package:bmi_app/repeat_container_code.dart';
+import 'package:bmi_app/icon_text.dart';
 
 class InputPage extends StatefulWidget {
   const InputPage({super.key});
@@ -53,45 +29,17 @@ class _InputPageState extends State<InputPage> {
                 children: [
                   Expanded(
                     child: RepeatContainerCode(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.male,
-                            size: 100.0,
-                            color: Colors.white,
-                          ),
-                          SizedBox(height: 15.0),
-                          Text(
-                            "MALE",
-                            style: TextStyle(
-                              fontSize: 20.0,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                      child: IconText(
+                        icon: Icons.male,
+                        text: "MALE",
                       ),
                     ),
                   ),
                   Expanded(
                     child: RepeatContainerCode(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.female,
-                            size: 100.0,
-                            color: Colors.white,
-                          ),
-                          SizedBox(height: 15.0),
-                          Text(
-                            "FEMALE",
-                            style: TextStyle(
-                              fontSize: 20.0,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                      child: IconText(
+                        icon: Icons.female,
+                        text: "FEMALE",
                       ),
                     ),
                   ),
