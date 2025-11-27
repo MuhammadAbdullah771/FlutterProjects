@@ -4,6 +4,7 @@ import 'package:bmi_app/icon_text.dart';
 import 'package:bmi_app/const.dart';
 import 'package:bmi_app/result_page.dart';
 import 'package:bmi_app/bmi_calculator.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 enum Gender { male, female }
 
@@ -88,8 +89,8 @@ class _InputPageState extends State<InputPage> {
             Expanded(
               child: Row(
                 children: [
-                  buildGenderCard(Gender.male, Icons.male, AppStrings.male),
-                  buildGenderCard(Gender.female, Icons.female, AppStrings.female),
+                  buildGenderCard(Gender.male, FontAwesomeIcons.person, AppStrings.male),
+                  buildGenderCard(Gender.female, FontAwesomeIcons.personDress, AppStrings.female),
                 ],
               ),
             ),

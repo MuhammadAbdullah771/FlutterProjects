@@ -11,6 +11,7 @@ class BMICalc extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: InputPage(),
       theme: ThemeData.dark().copyWith(
         primaryColor: AppColors.primaryBackground,
