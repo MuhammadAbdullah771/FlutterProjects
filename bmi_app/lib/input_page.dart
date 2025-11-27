@@ -32,39 +32,19 @@ class _InputPageState extends State<InputPage> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedGender = Gender.male;
-                        });
-                      },
+                      onTap: () => setState(() => selectedGender = Gender.male),
                       child: RepeatContainerCode(
-                        color: selectedGender == Gender.male
-                            ? Color(0xFF323244)
-                            : Color(0xFF1D1E33),
-                        child: IconText(
-                          icon: Icons.male,
-                          text: "MALE",
-                          iconColor: Colors.white,
-                        ),
+                        color: selectedGender == Gender.male ? Color(0xFF323244) : Color(0xFF1D1E33),
+                        child: IconText(icon: Icons.male, text: "MALE", iconColor: Colors.white),
                       ),
                     ),
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedGender = Gender.female;
-                        });
-                      },
+                      onTap: () => setState(() => selectedGender = Gender.female),
                       child: RepeatContainerCode(
-                        color: selectedGender == Gender.female
-                            ? Color(0xFF323244)
-                            : Color(0xFF1D1E33),
-                        child: IconText(
-                          icon: Icons.female,
-                          text: "FEMALE",
-                          iconColor: Colors.white,
-                        ),
+                        color: selectedGender == Gender.female ? Color(0xFF323244) : Color(0xFF1D1E33),
+                        child: IconText(icon: Icons.female, text: "FEMALE", iconColor: Colors.white),
                       ),
                     ),
                   ),
