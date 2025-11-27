@@ -8,6 +8,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bmi_app/main.dart';
+import 'package:bmi_app/input_page.dart';
 
 void main() {
   testWidgets('BMICalc renders the input page', (WidgetTester tester) async {
