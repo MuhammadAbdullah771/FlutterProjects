@@ -1,3 +1,4 @@
+<div align="center">
 <table>
   <tr>
     <td><img src="https://github.com/user-attachments/assets/91e2775a-6246-4e82-9873-666ed78da142" width="250"></td>
@@ -8,3 +9,4 @@
     <td><img src="https://github.com/user-attachments/assets/5be8ee0a-fb8c-474b-9608-11a96aa027af" width="250"></td>
   </tr>
 </table>
+</div>
