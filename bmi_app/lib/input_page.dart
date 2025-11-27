@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:bmi_app/repeat_container_code.dart';
 import 'package:bmi_app/icon_text.dart';
 
+enum Gender { male, female }
+
 class InputPage extends StatefulWidget {
   const InputPage({super.key});
 
@@ -13,7 +15,7 @@ class _InputPageState extends State<InputPage> {
   int height = 180;
   int weight = 60;
   int age = 20;
-  String? selectedGender;
+  Gender? selectedGender;
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +34,11 @@ class _InputPageState extends State<InputPage> {
                     child: GestureDetector(
                       onTap: () {
                         setState(() {
-                          selectedGender = 'male';
+                          selectedGender = Gender.male;
                         });
                       },
                       child: RepeatContainerCode(
-                        color: selectedGender == 'male'
+                        color: selectedGender == Gender.male
                             ? Color(0xFF323244)
                             : Color(0xFF1D1E33),
                         child: IconText(
@@ -51,11 +53,11 @@ class _InputPageState extends State<InputPage> {
                     child: GestureDetector(
                       onTap: () {
                         setState(() {
-                          selectedGender = 'female';
+                          selectedGender = Gender.female;
                         });
                       },
                       child: RepeatContainerCode(
-                        color: selectedGender == 'female'
+                        color: selectedGender == Gender.female
                             ? Color(0xFF323244)
                             : Color(0xFF1D1E33),
                         child: IconText(
