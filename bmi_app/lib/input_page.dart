@@ -66,6 +66,7 @@ class _InputPageState extends State<InputPage> {
                       style: TextStyle(
                         fontSize: AppSizes.mediumTextSize,
                         color: AppColors.textColor,
+                        letterSpacing: 1.2,
                       ),
                     ),
                     SizedBox(height: AppSizes.mediumSpacing),
@@ -80,6 +81,7 @@ class _InputPageState extends State<InputPage> {
                             fontSize: AppSizes.largeTextSize,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textColor,
+                            letterSpacing: 1.0,
                           ),
                         ),
                         SizedBox(width: AppSizes.smallSpacing),
@@ -87,23 +89,33 @@ class _InputPageState extends State<InputPage> {
                           AppStrings.cm,
                           style: TextStyle(
                             fontSize: AppSizes.mediumTextSize,
-                            color: AppColors.textColor,
+                            color: AppColors.textColor.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w300,
                           ),
                         ),
                       ],
                     ),
                     SizedBox(height: AppSizes.largeSpacing),
-                    Slider(
-                      value: height.toDouble(),
-                      min: AppDefaults.heightMin,
-                      max: AppDefaults.heightMax,
-                      activeColor: AppColors.sliderActiveColor,
-                      inactiveColor: AppColors.sliderInactiveColor,
-                      onChanged: (double newValue) {
-                        setState(() {
-                          height = newValue.round();
-                        });
-                      },
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: AppColors.sliderActiveColor,
+                        inactiveTrackColor: AppColors.sliderInactiveColor.withValues(alpha: 0.3),
+                        thumbColor: AppColors.sliderActiveColor,
+                        overlayColor: AppColors.sliderActiveColor.withValues(alpha: 0.2),
+                        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 15.0),
+                        overlayShape: RoundSliderOverlayShape(overlayRadius: 30.0),
+                        trackHeight: 4.0,
+                      ),
+                      child: Slider(
+                        value: height.toDouble(),
+                        min: AppDefaults.heightMin,
+                        max: AppDefaults.heightMax,
+                        onChanged: (double newValue) {
+                          setState(() {
+                            height = newValue.round();
+                          });
+                        },
+                      ),
                     ),
                   ],
                 ),
