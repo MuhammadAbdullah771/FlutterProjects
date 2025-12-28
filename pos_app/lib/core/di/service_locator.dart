@@ -2,9 +2,17 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/datasources/local_storage_datasource.dart';
+import '../../data/database/database_helper.dart';
+import '../../data/daos/product_dao.dart';
+import '../../data/daos/category_dao.dart';
+import '../../data/daos/inventory_transaction_dao.dart';
 import '../../data/repositories/supabase_auth_repository.dart';
+import '../../data/repositories/local_product_repository.dart';
+import '../../data/repositories/remote_product_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/repositories/product_repository.dart';
 import '../../presentation/providers/auth_provider.dart';
+import '../../presentation/providers/product_provider.dart';
 
 /// Service Locator / Dependency Injection container
 /// This class manages all dependencies and provides a single place to configure them
@@ -20,6 +28,14 @@ class ServiceLocator {
   supabase.SupabaseClient? _supabaseClient;
   AuthRepository? _authRepository;
   AuthProvider? _authProvider;
+  
+  // Product management dependencies
+  DatabaseHelper? _databaseHelper;
+  ProductDao? _productDao;
+  CategoryDao? _categoryDao;
+  InventoryTransactionDao? _inventoryTransactionDao;
+  ProductRepository? _productRepository;
+  ProductProvider? _productProvider;
   
   /// Initializes all dependencies
   /// This must be called before using any services
@@ -49,6 +65,24 @@ class ServiceLocator {
     
     // Initialize auth state (check for existing session)
     await _authProvider!.initialize();
+    
+    // Initialize database helper
+    _databaseHelper = DatabaseHelper();
+    await _databaseHelper!.database; // Initialize database
+    
+    // Initialize DAOs
+    _productDao = ProductDao();
+    _categoryDao = CategoryDao();
+    _inventoryTransactionDao = InventoryTransactionDao();
+    
+    // Initialize ProductRepository (using local repository for offline-first)
+    _productRepository = LocalProductRepository(
+      productDao: _productDao!,
+      transactionDao: _inventoryTransactionDao!,
+    );
+    
+    // Initialize ProductProvider
+    _productProvider = ProductProvider(_productRepository!);
   }
   
   /// Gets the AuthProvider instance
@@ -84,6 +118,38 @@ class ServiceLocator {
     return _supabaseClient!;
   }
   
+  /// Gets the ProductProvider instance
+  /// Throws an error if not initialized
+  ProductProvider get productProvider {
+    if (_productProvider == null) {
+      throw Exception(
+        'ServiceLocator not initialized. Call initialize() first.',
+      );
+    }
+    return _productProvider!;
+  }
+
+  /// Gets the ProductRepository instance
+  /// Throws an error if not initialized
+  ProductRepository get productRepository {
+    if (_productRepository == null) {
+      throw Exception(
+        'ServiceLocator not initialized. Call initialize() first.',
+      );
+    }
+    return _productRepository!;
+  }
+
+  /// Gets the DatabaseHelper instance
+  DatabaseHelper get databaseHelper {
+    if (_databaseHelper == null) {
+      throw Exception(
+        'ServiceLocator not initialized. Call initialize() first.',
+      );
+    }
+    return _databaseHelper!;
+  }
+
   /// Resets all dependencies (useful for testing)
   void reset() {
     _sharedPreferences = null;
@@ -91,6 +157,12 @@ class ServiceLocator {
     _supabaseClient = null;
     _authRepository = null;
     _authProvider = null;
+    _databaseHelper = null;
+    _productDao = null;
+    _categoryDao = null;
+    _inventoryTransactionDao = null;
+    _productRepository = null;
+    _productProvider = null;
   }
 }
 
