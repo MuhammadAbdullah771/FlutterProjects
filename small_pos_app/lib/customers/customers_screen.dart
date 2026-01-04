@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/customer_model.dart';
 import 'screens/customer_profile_screen.dart';
+import 'services/customer_service.dart';
 
 /// Customers screen matching the design
 class CustomersScreen extends StatefulWidget {
@@ -12,8 +13,10 @@ class CustomersScreen extends StatefulWidget {
 
 class _CustomersScreenState extends State<CustomersScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final CustomerService _customerService = CustomerService();
   String _filterType = 'All Customers';
   List<Customer> _customers = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -28,53 +31,21 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   Future<void> _loadCustomers() async {
-    // TODO: Load from service
     setState(() {
-      _customers = [
-        Customer(
-          id: '1',
-          name: 'Johnathan Doe',
-          phone: '+1 (555) 012-3456',
-          balance: 120.50,
-          totalSpent: 4500.00,
-        ),
-        Customer(
-          id: '2',
-          name: 'Sarah Wilson',
-          phone: '+1 (555) 987-6543',
-          balance: -15.00,
-          totalSpent: 3200.00,
-        ),
-        Customer(
-          id: '3',
-          name: 'Emily Clarke',
-          phone: '+1 (555) 234-5678',
-          balance: 0.0,
-          totalSpent: 1800.00,
-        ),
-        Customer(
-          id: '4',
-          name: 'Michael Ross',
-          phone: '+1 (555) 876-5432',
-          balance: 45.00,
-          totalSpent: 2500.00,
-        ),
-        Customer(
-          id: '5',
-          name: 'David Miller',
-          phone: '+1 (555) 345-6789',
-          balance: 0.0,
-          totalSpent: 1200.00,
-        ),
-        Customer(
-          id: '6',
-          name: 'Lisa Parker',
-          phone: '+1 (555) 456-7890',
-          balance: 0.0,
-          totalSpent: 900.00,
-        ),
-      ];
+      _isLoading = true;
     });
+
+    try {
+      final customers = await _customerService.getAllCustomers();
+      setState(() {
+        _customers = customers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   List<Customer> get _filteredCustomers {

@@ -1,11 +1,62 @@
 import 'package:flutter/material.dart';
 import '../models/customer_model.dart';
+import '../models/transaction_model.dart';
+import '../services/customer_service.dart';
+import 'add_payment_screen.dart';
 
 /// Customer Profile screen matching the design
-class CustomerProfileScreen extends StatelessWidget {
+class CustomerProfileScreen extends StatefulWidget {
   final Customer customer;
 
   const CustomerProfileScreen({super.key, required this.customer});
+
+  @override
+  State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
+}
+
+class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
+  final CustomerService _customerService = CustomerService();
+  Customer? _currentCustomer;
+  List<Transaction> _transactions = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomerData();
+  }
+
+  Future<void> _loadCustomerData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Reload customer to get updated balance
+      final customer = await _customerService.getCustomerById(widget.customer.id!);
+      final transactions = await _customerService.getCustomerTransactions(
+        widget.customer.id!,
+        limit: 10,
+      );
+
+      setState(() {
+        _currentCustomer = customer ?? widget.customer;
+        _transactions = transactions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _currentCustomer = widget.customer;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handlePaymentRecorded() async {
+    await _loadCustomerData();
+  }
+
+  Customer get _displayCustomer => _currentCustomer ?? widget.customer;
 
   @override
   Widget build(BuildContext context) {
@@ -42,252 +93,262 @@ class CustomerProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Customer Information Card
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               child: Column(
                 children: [
-                  // Profile Picture
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey[300],
-                        child: Text(
-                          _getInitials(customer.name),
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Name and Verified
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        customer.name,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.verified,
-                        color: Color(0xFF2196F3),
-                        size: 24,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Phone Number
-                  if (customer.phone != null)
-                    Text(
-                      customer.phone!,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
+                  // Customer Information Card
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    child: Column(
+                      children: [
+                        // Profile Picture
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.grey[300],
+                              child: Text(
+                                _getInitials(_displayCustomer.name),
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 3),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
 
-                  const SizedBox(height: 16),
+                        // Name and Verified
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                _displayCustomer.name,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.verified,
+                              color: Color(0xFF2196F3),
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
 
-                  // Tags
-                  if (customer.tags.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      children: customer.tags.map((tag) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            tag,
+                        // Phone Number
+                        if (_displayCustomer.phone != null)
+                          Text(
+                            _displayCustomer.phone!,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: tag == 'VIP' ? const Color(0xFF2196F3) : const Color(0xFF1A1A1A),
-                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                              color: Colors.grey[600],
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
 
-                  const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
-                  // Action Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Call functionality coming soon')),
-                            );
-                          },
-                          icon: const Icon(Icons.phone),
-                          label: const Text('Call'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        // Tags
+                        if (_displayCustomer.tags.isNotEmpty)
+                          Wrap(
+                            spacing: 8,
+                            children: _displayCustomer.tags.map((tag) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  tag,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: tag == 'VIP' ? const Color(0xFF2196F3) : const Color(0xFF1A1A1A),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+
+                        const SizedBox(height: 20),
+
+                        // Action Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  if (_displayCustomer.phone != null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Calling ${_displayCustomer.phone}...')),
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.phone),
+                                label: const Text('Call'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
                             ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddPaymentScreen(customer: _displayCustomer),
+                                    ),
+                                  ).then((result) {
+                                    if (result == true) {
+                                      _handlePaymentRecorded();
+                                    }
+                                  });
+                                },
+                                icon: const Icon(Icons.payment),
+                                label: const Text('Payment'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2196F3),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Summary Cards
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryCard(
+                            icon: Icons.wallet,
+                            label: 'BALANCE',
+                            amount: _displayCustomer.displayBalance,
+                            amountColor: _displayCustomer.balance > 0 ? Colors.red : Colors.black,
+                            status: _displayCustomer.balance > 0 ? 'Outstanding' : 'Paid',
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Message functionality coming soon')),
-                            );
-                          },
-                          icon: const Icon(Icons.message),
-                          label: const Text('Message'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2196F3),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSummaryCard(
+                            icon: Icons.attach_money,
+                            label: 'TOTAL SPENT',
+                            amount: '\$${_displayCustomer.totalSpent.toStringAsFixed(2)}',
+                            amountColor: Colors.black,
+                            status: 'Lifetime value',
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
 
-            // Summary Cards
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      icon: Icons.wallet,
-                      label: 'BALANCE',
-                      amount: customer.displayBalance,
-                      amountColor: customer.balance > 0 ? Colors.red : Colors.black,
-                      status: customer.balance > 0 ? 'Outstanding' : 'Paid',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      icon: Icons.attach_money,
-                      label: 'TOTAL SPENT',
-                      amount: '\$${customer.totalSpent.toStringAsFixed(2)}',
-                      amountColor: Colors.black,
-                      status: 'Lifetime value',
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                  const SizedBox(height: 24),
 
-            const SizedBox(height: 24),
-
-            // Recent Transactions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Recent Transactions',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
+                  // Recent Transactions
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Recent Transactions',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // TODO: Navigate to full transaction list
+                          },
+                          child: const Text(
+                            'View All',
+                            style: TextStyle(color: Color(0xFF2196F3)),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'View All',
-                      style: TextStyle(color: Color(0xFF2196F3)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  _buildTransactionCard(
-                    icon: Icons.receipt,
-                    iconColor: Colors.red,
-                    title: 'Order #1024',
-                    subtitle: 'Today, 10:23 AM',
-                    amount: '\$45.00',
-                    status: 'UNPAID',
-                    statusColor: Colors.red,
                   ),
                   const SizedBox(height: 12),
-                  _buildTransactionCard(
-                    icon: Icons.shopping_bag,
-                    iconColor: Colors.grey,
-                    title: 'Order #1018',
-                    subtitle: 'Yesterday, 4:15 PM',
-                    amount: '\$12.00',
-                    status: 'PAID',
-                    statusColor: Colors.green,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _transactions.isEmpty
+                        ? Container(
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey[400]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No transactions yet',
+                                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Column(
+                            children: _transactions.map((transaction) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _buildTransactionCard(
+                                  transaction: transaction,
+                                ),
+                              );
+                            }).toList(),
+                          ),
                   ),
-                  const SizedBox(height: 12),
-                  _buildTransactionCard(
-                    icon: Icons.account_balance_wallet,
-                    iconColor: Colors.green,
-                    title: 'Payment Received',
-                    subtitle: '2 days ago',
-                    amount: '+\$100.00',
-                    amountColor: Colors.green,
-                    status: 'CASH',
-                    statusColor: Colors.grey,
-                  ),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
-            const SizedBox(height: 100),
-          ],
-        ),
-      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.pushNamed(context, '/pos');
@@ -364,16 +425,14 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required String amount,
-    Color? amountColor,
-    required String status,
-    required Color statusColor,
-  }) {
+  Widget _buildTransactionCard({required Transaction transaction}) {
+    final isDebit = transaction.type == TransactionType.debit;
+    final icon = isDebit ? Icons.receipt : Icons.account_balance_wallet;
+    final iconColor = isDebit ? Colors.red : Colors.green;
+    final amountColor = isDebit ? Colors.black : Colors.green;
+    final status = isDebit ? 'UNPAID' : (transaction.paymentMethod?.displayName ?? 'PAID');
+    final statusColor = isDebit ? Colors.red : Colors.green;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -403,7 +462,7 @@ class CustomerProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  transaction.description ?? (isDebit ? 'Sale' : 'Payment'),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -412,12 +471,22 @@ class CustomerProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  _formatDate(transaction.createdAt),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
                   ),
                 ),
+                if (transaction.reference != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ref: ${transaction.reference}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -425,11 +494,11 @@ class CustomerProfileScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                amount,
+                transaction.displayAmount,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: amountColor ?? const Color(0xFF1A1A1A),
+                  color: amountColor,
                 ),
               ),
               const SizedBox(height: 4),
@@ -455,6 +524,28 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today, ${_formatTime(date)}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday, ${_formatTime(date)}';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final amPm = date.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $amPm';
+  }
+
   String _getInitials(String name) {
     final parts = name.split(' ');
     if (parts.length >= 2) {
@@ -463,4 +554,3 @@ class CustomerProfileScreen extends StatelessWidget {
     return name.substring(0, name.length > 2 ? 2 : name.length).toUpperCase();
   }
 }
-
