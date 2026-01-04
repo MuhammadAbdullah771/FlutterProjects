@@ -9,9 +9,6 @@ CREATE TABLE IF NOT EXISTS products (
   selling_price NUMERIC(10, 2) NOT NULL,
   cost_price NUMERIC(10, 2) NOT NULL,
   category TEXT NOT NULL,
-  track_stock BOOLEAN DEFAULT FALSE,
-  quantity INTEGER DEFAULT 0,
-  low_stock_alert INTEGER DEFAULT 5,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );

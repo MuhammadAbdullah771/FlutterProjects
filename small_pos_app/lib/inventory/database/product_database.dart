@@ -21,24 +21,9 @@ class ProductDatabase {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 1,
       onCreate: _createDB,
-      onUpgrade: _upgradeDB,
     );
-  }
-
-  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      // Add new columns for stock tracking
-      try {
-        await db.execute('ALTER TABLE products ADD COLUMN track_stock INTEGER NOT NULL DEFAULT 0');
-        await db.execute('ALTER TABLE products ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0');
-        await db.execute('ALTER TABLE products ADD COLUMN low_stock_alert INTEGER NOT NULL DEFAULT 5');
-      } catch (e) {
-        // Columns might already exist
-        print('Migration error (may be expected): $e');
-      }
-    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -50,9 +35,6 @@ class ProductDatabase {
         selling_price REAL NOT NULL,
         cost_price REAL NOT NULL,
         category TEXT NOT NULL,
-        track_stock INTEGER NOT NULL DEFAULT 0,
-        quantity INTEGER NOT NULL DEFAULT 0,
-        low_stock_alert INTEGER NOT NULL DEFAULT 5,
         created_at TEXT,
         updated_at TEXT,
         is_synced INTEGER NOT NULL DEFAULT 0

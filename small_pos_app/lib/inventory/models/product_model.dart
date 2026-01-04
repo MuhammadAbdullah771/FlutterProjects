@@ -1,4 +1,4 @@
-/// Product model with stock tracking
+/// Product model
 class Product {
   final String? id;
   final String sku;
@@ -6,9 +6,6 @@ class Product {
   final double sellingPrice;
   final double costPrice;
   final String category;
-  final bool trackStock;
-  final int quantity;
-  final int lowStockAlert;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final bool isSynced;
@@ -20,9 +17,6 @@ class Product {
     required this.sellingPrice,
     required this.costPrice,
     required this.category,
-    this.trackStock = false,
-    this.quantity = 0,
-    this.lowStockAlert = 5,
     this.createdAt,
     this.updatedAt,
     this.isSynced = false,
@@ -37,9 +31,6 @@ class Product {
       'selling_price': sellingPrice,
       'cost_price': costPrice,
       'category': category,
-      'track_stock': trackStock ? 1 : 0,
-      'quantity': quantity,
-      'low_stock_alert': lowStockAlert,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'is_synced': isSynced ? 1 : 0,
@@ -55,9 +46,6 @@ class Product {
       'selling_price': sellingPrice,
       'cost_price': costPrice,
       'category': category,
-      'track_stock': trackStock,
-      'quantity': quantity,
-      'low_stock_alert': lowStockAlert,
     };
   }
 
@@ -70,9 +58,6 @@ class Product {
       sellingPrice: (map['selling_price'] ?? map['sellingPrice'] ?? 0.0).toDouble(),
       costPrice: (map['cost_price'] ?? map['costPrice'] ?? 0.0).toDouble(),
       category: map['category'] ?? '',
-      trackStock: (map['track_stock'] ?? map['trackStock'] ?? 0) == 1,
-      quantity: (map['quantity'] ?? 0) as int,
-      lowStockAlert: (map['low_stock_alert'] ?? map['lowStockAlert'] ?? 5) as int,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])
           : map['createdAt'] != null
@@ -95,9 +80,6 @@ class Product {
     double? sellingPrice,
     double? costPrice,
     String? category,
-    bool? trackStock,
-    int? quantity,
-    int? lowStockAlert,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isSynced,
@@ -109,22 +91,10 @@ class Product {
       sellingPrice: sellingPrice ?? this.sellingPrice,
       costPrice: costPrice ?? this.costPrice,
       category: category ?? this.category,
-      trackStock: trackStock ?? this.trackStock,
-      quantity: quantity ?? this.quantity,
-      lowStockAlert: lowStockAlert ?? this.lowStockAlert,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isSynced: isSynced ?? this.isSynced,
     );
   }
-
-  // Helper methods
-  bool get isLowStock => trackStock && quantity <= lowStockAlert;
-  bool get isOutOfStock => trackStock && quantity == 0;
-  String get stockStatus {
-    if (!trackStock) return 'Not Tracked';
-    if (quantity == 0) return 'Out of Stock';
-    if (quantity <= lowStockAlert) return 'Low Stock';
-    return 'In Stock';
-  }
 }
+

@@ -41,6 +41,9 @@ dependencies:
   # SQLite for offline storage
   sqflite: ^2.3.0
   path: ^1.8.3
+  
+  # Image handling
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:

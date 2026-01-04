@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/product_model.dart';
 import '../services/product_service.dart';
 
@@ -21,13 +23,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _sellingPriceController = TextEditingController();
   final _costPriceController = TextEditingController();
   final _categoryController = TextEditingController();
-  final _quantityController = TextEditingController();
-  final _lowStockAlertController = TextEditingController();
 
   bool _isLoading = false;
+  File? _productImage;
   List<String> _categories = [];
   String? _selectedCategory;
-  bool _trackStock = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -41,12 +42,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _costPriceController.text = widget.product!.costPrice.toStringAsFixed(2);
       _categoryController.text = widget.product!.category;
       _selectedCategory = widget.product!.category;
-      _trackStock = widget.product!.trackStock;
-      _quantityController.text = widget.product!.quantity.toString();
-      _lowStockAlertController.text = widget.product!.lowStockAlert.toString();
-    } else {
-      _quantityController.text = '0';
-      _lowStockAlertController.text = '5';
     }
   }
 
@@ -57,8 +52,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _sellingPriceController.dispose();
     _costPriceController.dispose();
     _categoryController.dispose();
-    _quantityController.dispose();
-    _lowStockAlertController.dispose();
     super.dispose();
   }
 
@@ -67,6 +60,26 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     setState(() {
       _categories = categories;
     });
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+      if (image != null) {
+        setState(() {
+          _productImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _saveProduct() async {
@@ -86,9 +99,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         sellingPrice: double.parse(_sellingPriceController.text),
         costPrice: double.parse(_costPriceController.text),
         category: _selectedCategory ?? _categoryController.text.trim(),
-        trackStock: _trackStock,
-        quantity: int.tryParse(_quantityController.text) ?? 0,
-        lowStockAlert: int.tryParse(_lowStockAlertController.text) ?? 5,
       );
 
       if (widget.product == null) {
@@ -139,10 +149,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: Text(widget.product == null ? 'Add Product' : 'Edit Product'),
-        elevation: 0,
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.product == null ? 'Add Product' : 'Edit Product',
+          style: const TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         child: Form(
@@ -155,40 +174,52 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 margin: const EdgeInsets.all(16),
                 height: 200,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.grey[300]!,
-                    style: BorderStyle.solid,
+                    color: Colors.grey.shade300,
                     width: 2,
+                    style: BorderStyle.solid,
                   ),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2196F3),
-                          shape: BoxShape.circle,
+                child: InkWell(
+                  onTap: _pickImage,
+                  borderRadius: BorderRadius.circular(12),
+                  child: _productImage != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            _productImage!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2196F3),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Tap to upload image',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.add_photo_alternate,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Tap to upload image',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
 
@@ -206,12 +237,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     const Text(
                       'Basic Information',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1A1A1A),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Product Name
                     const Text(
@@ -228,10 +259,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       decoration: InputDecoration(
                         hintText: 'e.g., Coca Cola 500ml',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: const Color(0xFFF5F5F5),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -240,7 +272,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Category
                     const Text(
@@ -257,12 +289,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         value: _selectedCategory,
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           filled: true,
-                          fillColor: Colors.grey[50],
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         ),
-                        hint: const Text('Select Category'),
                         items: [
                           ..._categories.map((category) => DropdownMenuItem(
                                 value: category,
@@ -288,12 +320,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       TextFormField(
                         controller: _categoryController,
                         decoration: InputDecoration(
-                          hintText: 'Enter category',
+                          hintText: 'Select Category',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           filled: true,
-                          fillColor: Colors.grey[50],
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -302,7 +335,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           return null;
                         },
                       ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // SKU / Barcode
                     const Text(
@@ -328,10 +361,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           },
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: const Color(0xFFF5F5F5),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       ),
                       textCapitalization: TextCapitalization.characters,
                       enabled: widget.product == null,
@@ -362,12 +396,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     const Text(
                       'Pricing',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1A1A1A),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Selling Price
                     const Text(
@@ -385,10 +419,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         hintText: '0.00',
                         prefixText: '\$ ',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: const Color(0xFFF5F5F5),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
@@ -404,7 +439,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Cost Price
                     const Text(
@@ -422,10 +457,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         hintText: '0.00',
                         prefixText: '\$ ',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: const Color(0xFFF5F5F5),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
@@ -445,144 +481,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
 
-              // Inventory Section
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Inventory',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Track Stock Toggle
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Track Stock',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Enable stock management',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Switch(
-                          value: _trackStock,
-                          onChanged: (value) {
-                            setState(() {
-                              _trackStock = value;
-                            });
-                          },
-                          activeColor: const Color(0xFF2196F3),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Quantity (only if track stock is enabled)
-                    if (_trackStock) ...[
-                      const Text(
-                        'Quantity',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _quantityController,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        validator: (value) {
-                          if (_trackStock && (value == null || value.isEmpty)) {
-                            return 'Please enter quantity';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Low Stock Alert
-                      const Text(
-                        'Low Stock Alert',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _lowStockAlertController,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        validator: (value) {
-                          if (_trackStock && (value == null || value.isEmpty)) {
-                            return 'Please enter low stock alert';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Save Button
+              // Save Product Button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveProduct,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2196F3),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    elevation: 0,
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -602,6 +515,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         ),
                 ),
               ),
+
               const SizedBox(height: 32),
             ],
           ),
