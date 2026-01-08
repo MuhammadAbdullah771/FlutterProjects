@@ -2,8 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../models/product_model.dart';
 import '../services/product_service.dart';
+import '../../core/database/settings_database.dart';
+import '../../core/screens/qr_scanner_screen.dart';
 
 /// Add/Edit product screen matching the design
 class AddEditProductScreen extends StatefulWidget {
@@ -23,17 +27,22 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _sellingPriceController = TextEditingController();
   final _costPriceController = TextEditingController();
   final _categoryController = TextEditingController();
+  final _quantityController = TextEditingController();
+  final _lowStockController = TextEditingController();
 
   bool _isLoading = false;
   File? _productImage;
   List<String> _categories = [];
   String? _selectedCategory;
+  bool _trackStock = false;
   final ImagePicker _imagePicker = ImagePicker();
+  String _currencySymbol = '\$';
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
+    _loadCurrencySymbol();
     
     if (widget.product != null) {
       _skuController.text = widget.product!.sku;
@@ -42,6 +51,25 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _costPriceController.text = widget.product!.costPrice.toStringAsFixed(2);
       _categoryController.text = widget.product!.category;
       _selectedCategory = widget.product!.category;
+      _trackStock = widget.product!.stockQuantity != null;
+      _quantityController.text = widget.product!.stockQuantity?.toString() ?? '0';
+      _lowStockController.text = widget.product!.lowStockThreshold?.toString() ?? '5';
+      // Load existing image if available
+      _loadExistingImage();
+    } else {
+      _quantityController.text = '0';
+      _lowStockController.text = '5';
+    }
+  }
+
+  Future<void> _loadExistingImage() async {
+    if (widget.product?.imagePath != null) {
+      final imageFile = File(widget.product!.imagePath!);
+      if (await imageFile.exists()) {
+        setState(() {
+          _productImage = imageFile;
+        });
+      }
     }
   }
 
@@ -52,7 +80,20 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _sellingPriceController.dispose();
     _costPriceController.dispose();
     _categoryController.dispose();
+    _quantityController.dispose();
+    _lowStockController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCurrencySymbol() async {
+    try {
+      final settings = await SettingsDatabase.instance.getSettings();
+      setState(() {
+        _currencySymbol = settings.currencySymbol;
+      });
+    } catch (e) {
+      // Use default
+    }
   }
 
   Future<void> _loadCategories() async {
@@ -82,6 +123,30 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     }
   }
 
+  Future<String?> _saveImageToPersistentStorage(File? imageFile, String productSku) async {
+    if (imageFile == null || !await imageFile.exists()) {
+      return null;
+    }
+
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final imagesDirectory = Directory(path.join(directory.path, 'product_images'));
+      if (!await imagesDirectory.exists()) {
+        await imagesDirectory.create(recursive: true);
+      }
+
+      final extension = path.extension(imageFile.path);
+      final fileName = '${productSku}_${DateTime.now().millisecondsSinceEpoch}$extension';
+      final savedImagePath = path.join(imagesDirectory.path, fileName);
+      final savedImage = await imageFile.copy(savedImagePath);
+      
+      return savedImage.path;
+    } catch (e) {
+      print('Error saving image: $e');
+      return null;
+    }
+  }
+
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -92,13 +157,32 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     });
 
     try {
+      final sku = _skuController.text.trim().toUpperCase();
+      String? savedImagePath;
+
+      // Save image to persistent storage if a new image was selected
+      if (_productImage != null) {
+        // If editing and no new image selected, keep existing image path
+        if (widget.product == null || _productImage!.path != widget.product!.imagePath) {
+          savedImagePath = await _saveImageToPersistentStorage(_productImage, sku);
+        } else {
+          savedImagePath = widget.product!.imagePath;
+        }
+      } else if (widget.product != null) {
+        // Keep existing image path if editing and no new image selected
+        savedImagePath = widget.product!.imagePath;
+      }
+
       final product = Product(
         id: widget.product?.id,
-        sku: _skuController.text.trim().toUpperCase(),
+        sku: sku,
         name: _nameController.text.trim(),
         sellingPrice: double.parse(_sellingPriceController.text),
         costPrice: double.parse(_costPriceController.text),
         category: _selectedCategory ?? _categoryController.text.trim(),
+        stockQuantity: _trackStock ? int.tryParse(_quantityController.text) : null,
+        lowStockThreshold: _trackStock ? int.tryParse(_lowStockController.text) : null,
+        imagePath: savedImagePath,
       );
 
       if (widget.product == null) {
@@ -288,6 +372,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       DropdownButtonFormField<String>(
                         value: _selectedCategory,
                         decoration: InputDecoration(
+                          hintText: 'Select Category',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -353,11 +438,18 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         hintText: 'Scan or enter code',
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.qr_code_scanner, color: Color(0xFF2196F3)),
-                          onPressed: () {
-                            // TODO: Implement barcode scanner
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Barcode scanner coming soon')),
+                          onPressed: () async {
+                            final result = await Navigator.push<String>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const QRScannerScreen(),
+                              ),
                             );
+                            if (result != null && mounted) {
+                              setState(() {
+                                _skuController.text = result;
+                              });
+                            }
                           },
                         ),
                         border: OutlineInputBorder(
@@ -417,7 +509,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       controller: _sellingPriceController,
                       decoration: InputDecoration(
                         hintText: '0.00',
-                        prefixText: '\$ ',
+                        prefixText: '$_currencySymbol ',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -455,7 +547,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       controller: _costPriceController,
                       decoration: InputDecoration(
                         hintText: '0.00',
-                        prefixText: '\$ ',
+                        prefixText: '$_currencySymbol ',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -477,6 +569,138 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         return null;
                       },
                     ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Inventory Section
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Inventory',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Track Stock Toggle
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Track Stock',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Enable stock management',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        Switch(
+                          value: _trackStock,
+                          onChanged: (value) {
+                            setState(() {
+                              _trackStock = value;
+                            });
+                          },
+                          activeColor: const Color(0xFF2196F3),
+                        ),
+                      ],
+                    ),
+
+                    if (_trackStock) ...[
+                      const SizedBox(height: 16),
+                      // Quantity
+                      const Text(
+                        'Quantity',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _quantityController,
+                        decoration: InputDecoration(
+                          hintText: '0',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (value) {
+                          if (_trackStock && (value == null || value.isEmpty)) {
+                            return 'Required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Low Stock Alert
+                      const Text(
+                        'Low Stock Alert',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _lowStockController,
+                        decoration: InputDecoration(
+                          hintText: '5',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (value) {
+                          if (_trackStock && (value == null || value.isEmpty)) {
+                            return 'Required';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

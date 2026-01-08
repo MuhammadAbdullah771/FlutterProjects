@@ -1,32 +1,29 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sqflite;
 import 'package:path/path.dart';
 import '../models/customer_model.dart';
+import '../models/transaction_model.dart';
 
 /// SQLite database helper for customers
 class CustomerDatabase {
   static final CustomerDatabase instance = CustomerDatabase._init();
-  static Database? _database;
+  static sqflite.Database? _database;
 
   CustomerDatabase._init();
 
-  Future<Database> get database async {
+  Future<sqflite.Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('customers.db');
     return _database!;
   }
 
-  Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
+  Future<sqflite.Database> _initDB(String filePath) async {
+    final dbPath = await sqflite.getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
+    return await sqflite.openDatabase(path, version: 1, onCreate: _createDB);
   }
 
-  Future<void> _createDB(Database db, int version) async {
+  Future<void> _createDB(sqflite.Database db, int version) async {
     // Create customers table
     await db.execute('''
       CREATE TABLE customers (
@@ -61,8 +58,12 @@ class CustomerDatabase {
     ''');
 
     // Create indexes
-    await db.execute('CREATE INDEX idx_transactions_customer_id ON transactions(customer_id)');
-    await db.execute('CREATE INDEX idx_transactions_created_at ON transactions(created_at)');
+    await db.execute(
+      'CREATE INDEX idx_transactions_customer_id ON transactions(customer_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_created_at ON transactions(created_at)',
+    );
   }
 
   // Customer CRUD operations
@@ -78,7 +79,7 @@ class CustomerDatabase {
     await db.insert(
       'customers',
       customerWithId.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: sqflite.ConflictAlgorithm.replace,
     );
 
     return id;
@@ -93,11 +94,7 @@ class CustomerDatabase {
 
   Future<Customer?> getCustomerById(String id) async {
     final db = await database;
-    final maps = await db.query(
-      'customers',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final maps = await db.query('customers', where: 'id = ?', whereArgs: [id]);
 
     if (maps.isEmpty) return null;
     return Customer.fromMap(maps.first);
@@ -125,13 +122,14 @@ class CustomerDatabase {
   // Transaction operations
   Future<String> insertTransaction(Transaction transaction) async {
     final db = await database;
-    final id = transaction.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final id =
+        transaction.id ?? DateTime.now().millisecondsSinceEpoch.toString();
     final transactionWithId = transaction.copyWith(id: id);
 
     await db.insert(
       'transactions',
       transactionWithId.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: sqflite.ConflictAlgorithm.replace,
     );
 
     // Update customer balance
@@ -140,7 +138,10 @@ class CustomerDatabase {
     return id;
   }
 
-  Future<List<Transaction>> getTransactionsByCustomerId(String customerId, {int? limit}) async {
+  Future<List<Transaction>> getTransactionsByCustomerId(
+    String customerId, {
+    int? limit,
+  }) async {
     final db = await database;
     final maps = await db.query(
       'transactions',
@@ -170,7 +171,11 @@ class CustomerDatabase {
     final transaction = await getTransactionById(id);
     if (transaction == null) return 0;
 
-    final result = await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+    final result = await db.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
 
     // Update customer balance after deletion
     await _updateCustomerBalance(db, transaction.customerId);
@@ -179,7 +184,10 @@ class CustomerDatabase {
   }
 
   // Calculate and update customer balance from transactions
-  Future<void> _updateCustomerBalance(Database db, String customerId) async {
+  Future<void> _updateCustomerBalance(
+    sqflite.Database db,
+    String customerId,
+  ) async {
     final transactions = await db.query(
       'transactions',
       where: 'customer_id = ?',
@@ -233,10 +241,47 @@ class CustomerDatabase {
     return balance;
   }
 
+  // Get all transactions with optional filters
+  Future<List<Transaction>> getAllTransactions({
+    TransactionType? type,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? limit,
+    String? orderBy,
+  }) async {
+    final db = await database;
+    String where = '1=1';
+    List<dynamic> whereArgs = [];
+
+    if (type != null) {
+      where += ' AND type = ?';
+      whereArgs.add(type.name);
+    }
+
+    if (startDate != null) {
+      where += ' AND created_at >= ?';
+      whereArgs.add(startDate.toIso8601String());
+    }
+
+    if (endDate != null) {
+      where += ' AND created_at <= ?';
+      whereArgs.add(endDate.toIso8601String());
+    }
+
+    return db
+        .query(
+          'transactions',
+          where: where,
+          whereArgs: whereArgs,
+          orderBy: orderBy ?? 'created_at DESC',
+          limit: limit,
+        )
+        .then((maps) => maps.map((map) => Transaction.fromMap(map)).toList());
+  }
+
   // Close database
   Future<void> close() async {
     final db = await database;
     await db.close();
   }
 }
-

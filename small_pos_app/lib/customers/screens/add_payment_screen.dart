@@ -171,7 +171,9 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 hintText: '0.00',
                 prefixText: '\$ ',
@@ -213,7 +215,6 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
               ),
               child: Column(
                 children: PaymentMethod.values.map((method) {
-                  final isSelected = _selectedPaymentMethod == method;
                   return RadioListTile<PaymentMethod>(
                     title: Text(method.displayName),
                     value: method,
@@ -317,4 +318,3 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
     );
   }
 }
-

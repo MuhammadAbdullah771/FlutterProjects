@@ -41,9 +41,39 @@ dependencies:
   # SQLite for offline storage
   sqflite: ^2.3.0
   path: ^1.8.3
+  path_provider: ^2.1.1
   
   # Image handling
   image_picker: ^1.0.7
+  
+  # QR/Barcode scanner
+  mobile_scanner: ^5.2.3
+  
+  # State management
+  provider: ^6.1.1
+  
+  # Connectivity checking
+  connectivity_plus: ^5.0.2
+  
+  # Google Sign-In for Drive backup
+  google_sign_in: ^6.1.6
+  
+  # Google APIs for Drive
+  googleapis: ^12.0.0
+  # Auth helpers for Google APIs
+  googleapis_auth: ^1.4.0
+  
+  # File sharing for backup
+  share_plus: ^7.2.1
+  
+  # HTTP for API calls
+  http: ^1.1.2
+  
+  # Printing for receipts
+  printing: ^5.13.0
+  
+  # Shared preferences for storing quick actions
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

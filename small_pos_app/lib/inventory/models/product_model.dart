@@ -6,6 +6,9 @@ class Product {
   final double sellingPrice;
   final double costPrice;
   final String category;
+  final int? stockQuantity;
+  final int? lowStockThreshold;
+  final String? imagePath;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final bool isSynced;
@@ -17,6 +20,9 @@ class Product {
     required this.sellingPrice,
     required this.costPrice,
     required this.category,
+    this.stockQuantity,
+    this.lowStockThreshold,
+    this.imagePath,
     this.createdAt,
     this.updatedAt,
     this.isSynced = false,
@@ -31,6 +37,9 @@ class Product {
       'selling_price': sellingPrice,
       'cost_price': costPrice,
       'category': category,
+      'stock_quantity': stockQuantity,
+      'low_stock_threshold': lowStockThreshold,
+      'image_path': imagePath,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'is_synced': isSynced ? 1 : 0,
@@ -46,6 +55,8 @@ class Product {
       'selling_price': sellingPrice,
       'cost_price': costPrice,
       'category': category,
+      'stock_quantity': stockQuantity,
+      'low_stock_threshold': lowStockThreshold,
     };
   }
 
@@ -58,6 +69,13 @@ class Product {
       sellingPrice: (map['selling_price'] ?? map['sellingPrice'] ?? 0.0).toDouble(),
       costPrice: (map['cost_price'] ?? map['costPrice'] ?? 0.0).toDouble(),
       category: map['category'] ?? '',
+      stockQuantity: map['stock_quantity'] != null || map['stockQuantity'] != null
+          ? (map['stock_quantity'] ?? map['stockQuantity']) as int?
+          : null,
+      lowStockThreshold: map['low_stock_threshold'] != null || map['lowStockThreshold'] != null
+          ? (map['low_stock_threshold'] ?? map['lowStockThreshold']) as int?
+          : null,
+      imagePath: map['image_path'] ?? map['imagePath'],
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])
           : map['createdAt'] != null
@@ -80,6 +98,9 @@ class Product {
     double? sellingPrice,
     double? costPrice,
     String? category,
+    int? stockQuantity,
+    int? lowStockThreshold,
+    String? imagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isSynced,
@@ -91,10 +112,29 @@ class Product {
       sellingPrice: sellingPrice ?? this.sellingPrice,
       costPrice: costPrice ?? this.costPrice,
       category: category ?? this.category,
+      stockQuantity: stockQuantity ?? this.stockQuantity,
+      lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
+      imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isSynced: isSynced ?? this.isSynced,
     );
   }
-}
 
+  // Helper methods
+  bool get isLowStock {
+    if (stockQuantity == null || lowStockThreshold == null) return false;
+    return stockQuantity! <= lowStockThreshold!;
+  }
+
+  bool get isOutOfStock {
+    if (stockQuantity == null) return false;
+    return stockQuantity! <= 0;
+  }
+
+  String get stockStatus {
+    if (isOutOfStock) return 'Out of Stock';
+    if (isLowStock) return 'Low Stock';
+    return 'In Stock';
+  }
+}

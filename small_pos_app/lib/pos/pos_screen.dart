@@ -1,6 +1,17 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../inventory/services/product_service.dart';
 import '../inventory/models/product_model.dart';
+import '../core/screens/qr_scanner_screen.dart';
+import '../core/routes.dart';
+import '../core/widgets/bottom_nav_bar.dart';
+import '../customers/services/customer_service.dart';
+import '../customers/models/customer_model.dart';
+import '../customers/screens/add_edit_customer_screen.dart';
+import '../core/database/settings_database.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 /// Point of Sale screen matching the design
 class POSScreen extends StatefulWidget {
@@ -12,18 +23,86 @@ class POSScreen extends StatefulWidget {
 
 class _POSScreenState extends State<POSScreen> {
   final ProductService _productService = ProductService();
+  final CustomerService _customerService = CustomerService();
+  final SettingsDatabase _settingsDB = SettingsDatabase.instance;
   final TextEditingController _searchController = TextEditingController();
   List<Product> _products = [];
   List<CartItem> _cartItems = [];
   String _selectedCategory = 'All Items';
-  List<String> _categories = ['All Items', 'Drinks', 'Snacks', 'Fresh', 'Bakery'];
+  List<String> _categories = ['All Items'];
   double _discount = 0.0;
   double _tax = 5.0;
+  Customer? _selectedCustomer;
+  String _currencySymbol = '\$';
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _loadCategories();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final settings = await _settingsDB.getSettings();
+      setState(() {
+        _currencySymbol = settings.currencySymbol;
+        _tax = settings.defaultTaxRate;
+      });
+    } catch (e) {
+      print('Error loading settings: $e');
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await _productService.getCategories();
+      setState(() {
+        _categories = ['All Items', ...categories];
+      });
+    } catch (e) {
+      print('Error loading categories: $e');
+    }
+  }
+
+  void _showAddCategoryDialog() {
+    final categoryController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Category'),
+        content: TextField(
+          controller: categoryController,
+          decoration: const InputDecoration(
+            hintText: 'Category name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (categoryController.text.trim().isNotEmpty) {
+                setState(() {
+                  final newCategory = categoryController.text.trim();
+                  if (!_categories.contains(newCategory)) {
+                    _categories.add(newCategory);
+                    _categories.sort();
+                  }
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -63,7 +142,338 @@ class _POSScreenState extends State<POSScreen> {
   void _clearCart() {
     setState(() {
       _cartItems.clear();
+      _discount = 0.0;
     });
+  }
+
+  Future<void> _selectCustomer() async {
+    final customers = await _customerService.getAllCustomers();
+    final selected = await showDialog<Customer>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Customer'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: customers.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return ListTile(
+                  leading: const Icon(Icons.store),
+                  title: const Text('Walk-in Customer'),
+                  onTap: () => Navigator.pop(context, null),
+                );
+              }
+              final customer = customers[index - 1];
+              return ListTile(
+                leading: CircleAvatar(
+                  child: Text(customer.name[0].toUpperCase()),
+                ),
+                title: Text(customer.name),
+                subtitle: customer.phone != null ? Text(customer.phone!) : null,
+                onTap: () => Navigator.pop(context, customer),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    setState(() {
+      _selectedCustomer = selected;
+    });
+  }
+
+  void _processCheckout() {
+    if (_cartItems.isEmpty) return;
+
+    // First select customer if not selected
+    if (_selectedCustomer == null) {
+      _selectCustomer().then((_) {
+        _showCheckoutDialog();
+      });
+    } else {
+      _showCheckoutDialog();
+    }
+  }
+
+  Future<void> _saveTransaction() async {
+    try {
+      String customerId;
+      
+      if (_selectedCustomer != null) {
+        customerId = _selectedCustomer!.id!;
+      } else {
+        // Ensure walk-in customer exists
+        customerId = 'walkin';
+        final walkInCustomer = await _customerService.getCustomerById('walkin');
+        if (walkInCustomer == null) {
+          await _customerService.addCustomer(
+            Customer(
+              id: 'walkin',
+              name: 'Walk-in Customer',
+              balance: 0.0,
+              totalSpent: 0.0,
+            ),
+          );
+        }
+      }
+      
+      // Create transaction description with item details
+      final itemList = _cartItems.map((item) => 
+        '${item.product.name} x${item.quantity}'
+      ).join(', ');
+      final description = 'Sale: $itemList';
+      
+      // Generate order reference
+      final orderRef = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+      
+      // Save transaction
+      await _customerService.recordDebit(
+        customerId: customerId,
+        amount: _total,
+        description: description,
+        reference: orderRef,
+      );
+      
+      // Print receipt
+      await _printReceipt(orderRef);
+      
+      _clearCart();
+      setState(() {
+        _selectedCustomer = null;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sale completed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error processing sale: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _printReceipt(String orderRef) async {
+    try {
+      final settings = await _settingsDB.getSettings();
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat(80 * PdfPageFormat.mm, double.infinity),
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                // Store Name
+                pw.Text(
+                  settings.storeName,
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+                pw.SizedBox(height: 4),
+                // Store Address
+                if (settings.storeAddress != null && settings.storeAddress!.isNotEmpty)
+                  pw.Text(
+                    settings.storeAddress!,
+                    style: const pw.TextStyle(fontSize: 10),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                if (settings.storePhone != null && settings.storePhone!.isNotEmpty)
+                  pw.Text(
+                    'Tel: ${settings.storePhone}',
+                    style: const pw.TextStyle(fontSize: 10),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                pw.SizedBox(height: 8),
+                pw.Divider(),
+                pw.SizedBox(height: 8),
+                // Order Info
+                pw.Text(
+                  'Order: $orderRef',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+                pw.Text(
+                  'Date: ${DateTime.now().toString().substring(0, 19)}',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Divider(),
+                pw.SizedBox(height: 8),
+                // Items
+                ..._cartItems.map((item) {
+                  return pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 4),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Expanded(
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(
+                                item.product.name,
+                                style: const pw.TextStyle(fontSize: 10),
+                              ),
+                              pw.Text(
+                                '${item.quantity} x ${settings.currencySymbol}${item.product.sellingPrice.toStringAsFixed(2)}',
+                                style: const pw.TextStyle(fontSize: 9),
+                              ),
+                            ],
+                          ),
+                        ),
+                        pw.Text(
+                          '${settings.currencySymbol}${(item.product.sellingPrice * item.quantity).toStringAsFixed(2)}',
+                          style: const pw.TextStyle(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                pw.SizedBox(height: 8),
+                pw.Divider(),
+                pw.SizedBox(height: 8),
+                // Totals
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Subtotal:', style: pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      '${settings.currencySymbol}${_subtotal.toStringAsFixed(2)}',
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+                if (_discount > 0)
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Discount (${_discount.toStringAsFixed(1)}%):', style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text(
+                        '-${settings.currencySymbol}${_discountAmount.toStringAsFixed(2)}',
+                        style: const pw.TextStyle(fontSize: 10),
+                      ),
+                    ],
+                  ),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Tax (${_tax.toStringAsFixed(1)}%):', style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      '${settings.currencySymbol}${_taxAmount.toStringAsFixed(2)}',
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 4),
+                pw.Divider(),
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'TOTAL:',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      '${settings.currencySymbol}${_total.toStringAsFixed(2)}',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Divider(),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Thank you for your business!',
+                  style: const pw.TextStyle(fontSize: 10),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+      );
+    } catch (e) {
+      print('Error printing receipt: $e');
+      // Don't show error to user, just log it
+    }
+  }
+
+  void _showCheckoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Checkout'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Customer: ${_selectedCustomer?.name ?? 'Walk-in Customer'}'),
+            const SizedBox(height: 8),
+            Text('Subtotal: $_currencySymbol${_subtotal.toStringAsFixed(2)}'),
+            if (_discount > 0)
+              Text('Discount: -$_currencySymbol${_discountAmount.toStringAsFixed(2)}'),
+            Text('Tax: $_currencySymbol${_taxAmount.toStringAsFixed(2)}'),
+            const Divider(),
+            Text(
+              'Total: $_currencySymbol${_total.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _saveTransaction();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm & Print'),
+          ),
+        ],
+      ),
+    );
   }
 
   double get _subtotal {
@@ -102,61 +512,7 @@ class _POSScreenState extends State<POSScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.menu, color: Color(0xFF1A1A1A)),
-          ),
-          onPressed: () {},
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'New Sale',
-              style: TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              'Main Store • POS #1',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.person_add, color: Colors.white, size: 20),
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Add customer coming soon')),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Stack(
+    var stack = Stack(
         children: [
           Column(
             children: [
@@ -170,10 +526,25 @@ class _POSScreenState extends State<POSScreen> {
                     prefixIcon: const Icon(Icons.search, color: Colors.grey),
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.qr_code_scanner, color: Color(0xFF2196F3)),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Barcode scanner coming soon')),
+                      onPressed: () async {
+                        final result = await Navigator.push<String>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const QRScannerScreen(),
+                          ),
                         );
+                        if (result != null) {
+                          _searchController.text = result;
+                          setState(() {});
+                          // Try to find product by SKU and add to cart
+                          final product = await _productService.getProductBySku(result);
+                          if (product != null) {
+                            _addToCart(product);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Added ${product.name} to cart')),
+                            );
+                          }
+                        }
                       },
                     ),
                     border: OutlineInputBorder(
@@ -194,8 +565,31 @@ class _POSScreenState extends State<POSScreen> {
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _categories.length,
+                  itemCount: _categories.length + 1,
                   itemBuilder: (context, index) {
+                    if (index == _categories.length) {
+                      // Add category button
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add, size: 16),
+                              SizedBox(width: 4),
+                              Text('Add Category'),
+                            ],
+                          ),
+                          selected: false,
+                          onSelected: (_) => _showAddCategoryDialog(),
+                          backgroundColor: Colors.grey[200],
+                          labelStyle: const TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    }
                     final category = _categories[index];
                     final isSelected = _selectedCategory == category;
                     return Padding(
@@ -446,7 +840,7 @@ class _POSScreenState extends State<POSScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '\$${_total.toStringAsFixed(2)}',
+                                '$_currencySymbol${_total.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -456,10 +850,8 @@ class _POSScreenState extends State<POSScreen> {
                             ],
                           ),
                           ElevatedButton.icon(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Checkout functionality coming soon')),
-                              );
+                            onPressed: _cartItems.isEmpty ? null : () {
+                              _processCheckout();
                             },
                             icon: const Icon(Icons.arrow_forward),
                             label: const Text('Checkout'),
@@ -478,8 +870,87 @@ class _POSScreenState extends State<POSScreen> {
                   ],
                 ),
               ),
-            ],
+          ),
         ],
+      );
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'New Sale',
+              style: TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              'Main Store • POS #1',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2196F3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.person_add, color: Colors.white, size: 20),
+            ),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddEditCustomerScreen(),
+                ),
+              );
+              if (result == true) {
+                // Reload customers if needed
+              }
+            },
+          ),
+        ],
+      ),
+      body: stack,
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 1,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+              break;
+            case 1:
+              // Already here
+              break;
+            case 2:
+              Navigator.pushReplacementNamed(context, AppRoutes.inventory);
+              break;
+            case 3:
+              Navigator.pushReplacementNamed(context, AppRoutes.customers);
+              break;
+            case 4:
+              Navigator.pushReplacementNamed(context, AppRoutes.reports);
+              break;
+            case 5:
+              Navigator.pushReplacementNamed(context, AppRoutes.settings);
+              break;
+          }
+        },
       ),
     );
   }
@@ -505,7 +976,21 @@ class _POSScreenState extends State<POSScreen> {
                   topRight: Radius.circular(12),
                 ),
               ),
-              child: const Icon(Icons.image, color: Colors.grey, size: 40),
+              child: product.imagePath != null && product.imagePath!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                      child: Image.file(
+                        File(product.imagePath!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(Icons.image, color: Colors.grey, size: 40);
+                        },
+                      ),
+                    )
+                  : const Icon(Icons.image, color: Colors.grey, size: 40),
             ),
           ),
           Padding(
@@ -525,7 +1010,7 @@ class _POSScreenState extends State<POSScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '\$${product.sellingPrice.toStringAsFixed(2)}',
+                  '$_currencySymbol${product.sellingPrice.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -575,7 +1060,18 @@ class _POSScreenState extends State<POSScreen> {
               color: Colors.grey[300],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.image, color: Colors.grey),
+            child: item.product.imagePath != null && item.product.imagePath!.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      File(item.product.imagePath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.image, color: Colors.grey);
+                      },
+                    ),
+                  )
+                : const Icon(Icons.image, color: Colors.grey),
           ),
           const SizedBox(width: 12),
           // Product Info
@@ -643,7 +1139,7 @@ class _POSScreenState extends State<POSScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                '\$${item.product.sellingPrice.toStringAsFixed(2)}',
+                '$_currencySymbol${item.product.sellingPrice.toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.grey,
@@ -651,7 +1147,7 @@ class _POSScreenState extends State<POSScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '\$${(item.product.sellingPrice * item.quantity).toStringAsFixed(2)}',
+                '$_currencySymbol${(item.product.sellingPrice * item.quantity).toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'services/report_service.dart';
 import 'models/report_model.dart';
+import '../core/routes.dart';
+import '../core/widgets/bottom_nav_bar.dart';
 
 /// Reports screen with comprehensive analytics
 class ReportsScreen extends StatefulWidget {
@@ -126,6 +128,31 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 _buildFinancialReport(),
               ],
             ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 4,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+              break;
+            case 1:
+              Navigator.pushReplacementNamed(context, AppRoutes.pos);
+              break;
+            case 2:
+              Navigator.pushReplacementNamed(context, AppRoutes.inventory);
+              break;
+            case 3:
+              Navigator.pushReplacementNamed(context, AppRoutes.customers);
+              break;
+            case 4:
+              // Already here
+              break;
+            case 5:
+              Navigator.pushReplacementNamed(context, AppRoutes.settings);
+              break;
+          }
+        },
+      ),
     );
   }
 

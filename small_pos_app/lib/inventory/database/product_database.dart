@@ -35,6 +35,9 @@ class ProductDatabase {
         selling_price REAL NOT NULL,
         cost_price REAL NOT NULL,
         category TEXT NOT NULL,
+        stock_quantity INTEGER,
+        low_stock_threshold INTEGER,
+        image_path TEXT,
         created_at TEXT,
         updated_at TEXT,
         is_synced INTEGER NOT NULL DEFAULT 0

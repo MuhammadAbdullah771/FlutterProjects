@@ -1,17 +1,14 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/report_model.dart';
 import '../../customers/services/customer_service.dart';
 import '../../customers/database/customer_database.dart';
 import '../../customers/models/transaction_model.dart';
 import '../../inventory/services/product_service.dart';
-import '../../inventory/models/product_model.dart';
 
 /// Service for generating various reports
 class ReportService {
   final CustomerService _customerService = CustomerService();
   final ProductService _productService = ProductService();
   final CustomerDatabase _customerDB = CustomerDatabase.instance;
-  final SupabaseClient _supabase = Supabase.instance.client;
 
   /// Generate sales report for a date range
   Future<SalesReport> getSalesReport({
@@ -20,7 +17,13 @@ class ReportService {
   }) async {
     try {
       final end = endDate ?? DateTime.now();
-      final start = startDate ?? DateTime(end.year, end.month, end.day).subtract(const Duration(days: 30));
+      final start =
+          startDate ??
+          DateTime(
+            end.year,
+            end.month,
+            end.day,
+          ).subtract(const Duration(days: 30));
 
       // Get all transactions in date range
       final db = await _customerDB.database;
@@ -62,7 +65,9 @@ class ReportService {
         date: DateTime.now(),
         totalSales: totalSales,
         transactionCount: transactions.length,
-        averageTransaction: transactions.isEmpty ? 0.0 : totalSales / transactions.length,
+        averageTransaction: transactions.isEmpty
+            ? 0.0
+            : totalSales / transactions.length,
         dailyBreakdown: dailyBreakdown,
       );
     } catch (e) {
@@ -80,7 +85,7 @@ class ReportService {
   Future<CustomerReport> getCustomerReport() async {
     try {
       final customers = await _customerService.getAllCustomers();
-      
+
       int customersWithBalance = 0;
       double totalOutstanding = 0.0;
       double totalSpent = 0.0;
@@ -93,12 +98,14 @@ class ReportService {
         }
         totalSpent += customer.totalSpent;
 
-        topCustomers.add(TopCustomer(
-          customerId: customer.id ?? '',
-          customerName: customer.name,
-          totalSpent: customer.totalSpent,
-          balance: customer.balance,
-        ));
+        topCustomers.add(
+          TopCustomer(
+            customerId: customer.id ?? '',
+            customerName: customer.name,
+            totalSpent: customer.totalSpent,
+            balance: customer.balance,
+          ),
+        );
       }
 
       topCustomers.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
@@ -125,7 +132,7 @@ class ReportService {
   Future<ProductReport> getProductReport() async {
     try {
       final products = await _productService.getAllProducts();
-      
+
       int lowStockProducts = 0;
       int outOfStockProducts = 0;
       double totalInventoryValue = 0.0;
@@ -144,12 +151,14 @@ class ReportService {
         // }
 
         // For top products, we'd need sales data - simplified for now
-        topProducts.add(TopProduct(
-          productId: product.id ?? '',
-          productName: product.name,
-          quantitySold: 0, // Would need to track from sales
-          revenue: 0.0, // Would need to track from sales
-        ));
+        topProducts.add(
+          TopProduct(
+            productId: product.id ?? '',
+            productName: product.name,
+            quantitySold: 0, // Would need to track from sales
+            revenue: 0.0, // Would need to track from sales
+          ),
+        );
       }
 
       return ProductReport(
@@ -177,7 +186,13 @@ class ReportService {
   }) async {
     try {
       final end = endDate ?? DateTime.now();
-      final start = startDate ?? DateTime(end.year, end.month, end.day).subtract(const Duration(days: 30));
+      final start =
+          startDate ??
+          DateTime(
+            end.year,
+            end.month,
+            end.day,
+          ).subtract(const Duration(days: 30));
 
       // Get revenue from debit transactions
       final db = await _customerDB.database;
@@ -210,13 +225,14 @@ class ReportService {
       // This is a simplified calculation - in reality, you'd track cost per transaction
       // For now, we'll estimate based on average cost price
       if (products.isNotEmpty) {
-        final avgCostPrice = products.map((p) => p.costPrice).reduce((a, b) => a + b) / products.length;
         // Rough estimate: assume 60% of revenue is cost
         totalCost = totalRevenue * 0.6;
       }
 
       final grossProfit = totalRevenue - totalCost;
-      final profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0.0;
+      final profitMargin = totalRevenue > 0
+          ? (grossProfit / totalRevenue) * 100
+          : 0.0;
 
       // Get outstanding balance
       final customers = await _customerService.getAllCustomers();
@@ -251,4 +267,3 @@ class ReportService {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 }
-

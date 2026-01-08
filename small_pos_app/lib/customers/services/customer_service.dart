@@ -180,6 +180,57 @@ class CustomerService {
     }
   }
 
+  /// Get all transactions with optional filters
+  Future<List<Transaction>> getAllTransactions({
+    TransactionType? type,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? limit,
+  }) async {
+    try {
+      return await _localDB.getAllTransactions(
+        type: type,
+        startDate: startDate,
+        endDate: endDate,
+        limit: limit,
+      );
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Get today's total sales (debit transactions)
+  Future<double> getTodaySales() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final transactions = await _localDB.getAllTransactions(
+        type: TransactionType.debit,
+        startDate: startOfDay,
+        endDate: endOfDay,
+      );
+
+      double total = 0.0;
+      for (var transaction in transactions) {
+        total += transaction.amount;
+      }
+      return total;
+    } catch (e) {
+      return 0.0;
+    }
+  }
+
+  /// Get recent transactions for activity feed
+  Future<List<Transaction>> getRecentTransactions({int limit = 10}) async {
+    try {
+      return await _localDB.getAllTransactions(limit: limit);
+    } catch (e) {
+      return [];
+    }
+  }
+
   // Sync operations
   Future<void> _syncCustomerToSupabase(Customer customer) async {
     try {
@@ -203,7 +254,7 @@ class CustomerService {
 
   Future<void> _syncTransactionToSupabase(Transaction transaction) async {
     try {
-      final response = await _supabase
+      await _supabase
           .from('transactions')
           .upsert(transaction.toSupabaseMap())
           .select()

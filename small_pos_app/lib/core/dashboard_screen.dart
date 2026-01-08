@@ -1,58 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'routes.dart';
-import '../auth/auth_service.dart';
+import '../core/widgets/bottom_nav_bar.dart';
+import '../core/database/settings_database.dart';
+import '../inventory/services/product_service.dart';
+import '../customers/services/customer_service.dart';
+import '../customers/models/transaction_model.dart';
 
 /// Dashboard screen matching the attached design
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
-  Future<void> _handleLogout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
-    if (confirm == true) {
-      try {
-        await AuthService.signOut();
-        if (context.mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.login);
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error logging out: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+class _DashboardScreenState extends State<DashboardScreen> {
+  final ProductService _productService = ProductService();
+  final CustomerService _customerService = CustomerService();
+  String _currencySymbol = '\$';
+  int _totalProducts = 0;
+  int _lowStockCount = 0;
+  double _creditDue = 0.0;
+  double _todaySales = 0.0;
+  bool _isLoading = true;
+  List<Transaction> _recentTransactions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final settings = await SettingsDatabase.instance.getSettings();
+      final products = await _productService.getAllProducts();
+      final customers = await _customerService.getAllCustomers();
+      
+      final lowStock = products.where((p) => p.isLowStock).length;
+      final creditDue = customers.fold(0.0, (sum, c) => sum + (c.balance > 0 ? c.balance : 0));
+      final todaySales = await _customerService.getTodaySales();
+      final recentTransactions = await _customerService.getRecentTransactions(limit: 3);
+      
+      setState(() {
+        _currencySymbol = settings.currencySymbol;
+        _totalProducts = products.length;
+        _lowStockCount = lowStock;
+        _creditDue = creditDue;
+        _todaySales = todaySales;
+        _recentTransactions = recentTransactions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onNavTap(int index) {
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, AppRoutes.pos);
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, AppRoutes.inventory);
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, AppRoutes.customers);
+        break;
+      case 4:
+        Navigator.pushReplacementNamed(context, AppRoutes.reports);
+        break;
+      case 5:
+        Navigator.pushReplacementNamed(context, AppRoutes.settings);
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
+    
+    if (_isLoading) {
+      return Scaffold(
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
     
     return Scaffold(
       backgroundColor: Colors.white,
@@ -118,7 +156,14 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.notifications_none, color: Color(0xFF1A1A1A)),
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No new notifications'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
                       ),
                       Positioned(
                         right: 8,
@@ -182,9 +227,9 @@ class DashboardScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          const Text(
-                            '\$1,450.00',
-                            style: TextStyle(
+                          Text(
+                            '$_currencySymbol${_todaySales.toStringAsFixed(2)}',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 36,
                               fontWeight: FontWeight.bold,
@@ -227,7 +272,7 @@ class DashboardScreen extends StatelessWidget {
                               icon: Icons.inventory_2,
                               iconColor: const Color(0xFF2196F3),
                               title: 'Total Products',
-                              value: '342',
+                              value: '$_totalProducts',
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -236,7 +281,7 @@ class DashboardScreen extends StatelessWidget {
                               icon: Icons.warning,
                               iconColor: const Color(0xFFFF9800),
                               title: 'Low Stock',
-                              value: '5 Items',
+                              value: '$_lowStockCount Items',
                               accentColor: const Color(0xFFFF9800),
                             ),
                           ),
@@ -246,7 +291,7 @@ class DashboardScreen extends StatelessWidget {
                               icon: Icons.wallet,
                               iconColor: const Color(0xFF9C27B0),
                               title: 'Credit Due',
-                              value: '\$210.00',
+                              value: '$_currencySymbol${_creditDue.toStringAsFixed(2)}',
                             ),
                           ),
                         ],
@@ -270,7 +315,14 @@ class DashboardScreen extends StatelessWidget {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Quick actions customization coming soon'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
                             child: const Text(
                               'Edit',
                               style: TextStyle(color: Color(0xFF2196F3)),
@@ -304,14 +356,14 @@ class DashboardScreen extends StatelessWidget {
                             icon: Icons.keyboard_return,
                             label: 'Returns',
                             color: const Color(0xFF1A1A1A),
-                            route: null,
+                            route: AppRoutes.returns,
                           ),
                           _buildQuickAction(
                             context,
                             icon: Icons.receipt,
                             label: 'Expenses',
                             color: const Color(0xFF1A1A1A),
-                            route: null,
+                            route: AppRoutes.expenses,
                           ),
                         ],
                       ),
@@ -334,7 +386,9 @@ class DashboardScreen extends StatelessWidget {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.pushNamed(context, AppRoutes.reports);
+                            },
                             child: const Text(
                               'View All',
                               style: TextStyle(color: Color(0xFF2196F3)),
@@ -346,39 +400,41 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          _buildActivityCard(
-                            icon: Icons.shopping_bag,
-                            iconColor: const Color(0xFF4CAF50),
-                            title: 'Order #2034',
-                            subtitle: 'Today, 10:42 AM',
-                            amount: '\$42.50',
-                            status: 'Completed',
-                            statusColor: const Color(0xFF4CAF50),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildActivityCard(
-                            icon: Icons.assignment_turned_in,
-                            iconColor: const Color(0xFF2196F3),
-                            title: 'Stock Update',
-                            subtitle: 'Today, 09:15 AM',
-                            amount: '12 Items',
-                            status: 'Added',
-                            statusColor: const Color(0xFF2196F3),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildActivityCard(
-                            icon: Icons.keyboard_return,
-                            iconColor: const Color(0xFFFF9800),
-                            title: 'Refund #2031',
-                            subtitle: 'Yesterday, 5:20 PM',
-                            amount: '-\$15.00',
-                            status: 'Processed',
-                            statusColor: Colors.grey,
-                          ),
-                        ],
-                      ),
+                      child: _recentTransactions.isEmpty
+                          ? Container(
+                              padding: const EdgeInsets.all(32),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.receipt_long, size: 48, color: Colors.grey[400]),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No recent activity',
+                                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : Column(
+                              children: _recentTransactions.map((transaction) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _buildTransactionActivityCard(transaction),
+                                );
+                              }).toList(),
+                            ),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -387,6 +443,10 @@ class DashboardScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 0,
+        onTap: _onNavTap,
       ),
     );
   }
@@ -487,6 +547,72 @@ class DashboardScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildTransactionActivityCard(Transaction transaction) {
+    // Get icon and color based on transaction type
+    IconData icon;
+    Color iconColor;
+    String status;
+    Color statusColor;
+    
+    if (transaction.type == TransactionType.debit) {
+      icon = Icons.shopping_bag;
+      iconColor = const Color(0xFF4CAF50);
+      status = 'Sale';
+      statusColor = const Color(0xFF4CAF50);
+    } else {
+      icon = Icons.payment;
+      iconColor = const Color(0xFF2196F3);
+      status = 'Payment';
+      statusColor = const Color(0xFF2196F3);
+    }
+    
+    // Format date
+    String dateStr = _formatActivityDate(transaction.createdAt);
+    
+    // Get reference or description
+    String title = transaction.reference ?? transaction.description ?? 'Transaction';
+    if (title.startsWith('Sale: ')) {
+      title = title.replaceFirst('Sale: ', '');
+      if (title.length > 30) {
+        title = '${title.substring(0, 30)}...';
+      }
+    }
+    
+    return _buildActivityCard(
+      icon: icon,
+      iconColor: iconColor,
+      title: title,
+      subtitle: dateStr,
+      amount: '${_currencySymbol}${transaction.amount.toStringAsFixed(2)}',
+      status: status,
+      statusColor: statusColor,
+    );
+  }
+
+  String _formatActivityDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    
+    if (dateOnly == today) {
+      final hours = date.hour;
+      final minutes = date.minute.toString().padLeft(2, '0');
+      final amPm = hours >= 12 ? 'PM' : 'AM';
+      final displayHour = hours > 12 ? hours - 12 : (hours == 0 ? 12 : hours);
+      return 'Today, $displayHour:$minutes $amPm';
+    } else if (dateOnly == yesterday) {
+      final hours = date.hour;
+      final minutes = date.minute.toString().padLeft(2, '0');
+      final amPm = hours >= 12 ? 'PM' : 'AM';
+      final displayHour = hours > 12 ? hours - 12 : (hours == 0 ? 12 : hours);
+      return 'Yesterday, $displayHour:$minutes $amPm';
+    } else {
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    }
   }
 
   Widget _buildActivityCard({

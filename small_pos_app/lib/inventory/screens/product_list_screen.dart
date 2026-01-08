@@ -5,7 +5,9 @@ import 'add_edit_product_screen.dart';
 
 /// Product list screen matching the design
 class ProductListScreen extends StatefulWidget {
-  const ProductListScreen({super.key});
+  final bool showAppBar;
+  
+  const ProductListScreen({super.key, this.showAppBar = false});
 
   @override
   State<ProductListScreen> createState() => _ProductListScreenState();
@@ -96,7 +98,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
+      appBar: widget.showAppBar ? AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         title: Column(
@@ -130,7 +132,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             onPressed: () {},
           ),
         ],
-      ),
+      ) : null,
       body: Column(
         children: [
           // Search Bar
@@ -233,7 +235,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: widget.showAppBar ? FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
@@ -244,7 +246,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         },
         backgroundColor: const Color(0xFF2196F3),
         child: const Icon(Icons.add, color: Colors.white),
-      ),
+      ) : null,
     );
   }
 
