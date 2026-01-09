@@ -64,10 +64,14 @@ class ExpenseDatabase {
     List<Map<String, dynamic>> result;
 
     if (startDate != null && endDate != null) {
+      // Use date comparison correctly (compare date strings)
+      final startDateStr = DateTime(startDate.year, startDate.month, startDate.day).toIso8601String();
+      final endDateStr = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59).toIso8601String();
+      
       result = await db.query(
         'expenses',
         where: 'date >= ? AND date <= ?',
-        whereArgs: [startDate.toIso8601String(), endDate.toIso8601String()],
+        whereArgs: [startDateStr, endDateStr],
         orderBy: 'date DESC, created_at DESC',
       );
     } else {

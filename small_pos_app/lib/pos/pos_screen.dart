@@ -12,6 +12,7 @@ import '../core/database/settings_database.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../core/services/printer_service.dart';
 
 /// Point of Sale screen matching the design
 class POSScreen extends StatefulWidget {
@@ -275,9 +276,11 @@ class _POSScreenState extends State<POSScreen> {
       final settings = await _settingsDB.getSettings();
       final pdf = pw.Document();
 
+      // Thermal printer format - 80mm width
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat(80 * PdfPageFormat.mm, double.infinity),
+          margin: const pw.EdgeInsets.all(0),
           build: (pw.Context context) {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.center,
@@ -421,9 +424,14 @@ class _POSScreenState extends State<POSScreen> {
         ),
       );
 
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-      );
+      // Print directly to thermal printer without PDF saving
+      final printed = await PrinterService.instance.printDirectly(pdf);
+      if (!printed) {
+        // Fallback: show error or use system dialog
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdf.save(),
+        );
+      }
     } catch (e) {
       print('Error printing receipt: $e');
       // Don't show error to user, just log it
@@ -431,65 +439,36 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   void _showCheckoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Checkout'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Customer: ${_selectedCustomer?.name ?? 'Walk-in Customer'}'),
-            const SizedBox(height: 8),
-            Text('Subtotal: $_currencySymbol${_subtotal.toStringAsFixed(2)}'),
-            if (_discount > 0)
-              Text('Discount: -$_currencySymbol${_discountAmount.toStringAsFixed(2)}'),
-            Text('Tax: $_currencySymbol${_taxAmount.toStringAsFixed(2)}'),
-            const Divider(),
-            Text(
-              'Total: $_currencySymbol${_total.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _saveTransaction();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2196F3),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirm & Print'),
-          ),
-        ],
-      ),
-    );
+    // Direct checkout without dialog - print directly to thermal printer
+    _saveTransaction();
   }
 
+  // Calculate subtotal: sum of (price * quantity) for all items
   double get _subtotal {
-    return _cartItems.fold(0.0, (sum, item) => sum + (item.product.sellingPrice * item.quantity));
+    return _cartItems.fold(0.0, (sum, item) {
+      final itemTotal = item.product.sellingPrice * item.quantity;
+      return sum + itemTotal;
+    });
   }
 
+  // Calculate discount amount: percentage of subtotal
   double get _discountAmount {
-    return _subtotal * (_discount / 100);
+    if (_discount <= 0) return 0.0;
+    return (_subtotal * _discount) / 100.0;
   }
 
+  // Calculate tax amount: percentage of (subtotal - discount)
   double get _taxAmount {
-    return (_subtotal - _discountAmount) * (_tax / 100);
+    if (_tax <= 0) return 0.0;
+    final taxableAmount = _subtotal - _discountAmount;
+    return (taxableAmount * _tax) / 100.0;
   }
 
+  // Calculate total: subtotal - discount + tax
   double get _total {
-    return _subtotal - _discountAmount + _taxAmount;
+    final total = _subtotal - _discountAmount + _taxAmount;
+    // Ensure total is never negative
+    return total < 0 ? 0.0 : total;
   }
 
   List<Product> get _filteredProducts {
@@ -878,10 +857,7 @@ class _POSScreenState extends State<POSScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

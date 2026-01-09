@@ -174,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Title
                 const Text(
-                  'Smart POS',
+                  'VendoraX POS',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -338,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'New to Smart POS? ',
+                      'New to VendoraX POS? ',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -458,7 +458,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // Tagline
                     Text(
-                      'Manage your inventory and sales efficiently with Smart POS.',
+                      'Manage your inventory and sales efficiently with VendoraX POS.',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],

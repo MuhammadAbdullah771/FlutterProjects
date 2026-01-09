@@ -5,7 +5,10 @@ import '../core/widgets/bottom_nav_bar.dart';
 import '../core/database/settings_database.dart';
 import '../inventory/services/product_service.dart';
 import '../customers/services/customer_service.dart';
+import 'services/notification_service.dart';
 import '../customers/models/transaction_model.dart';
+import '../core/services/expense_service.dart';
+import '../core/models/expense_model.dart';
 
 /// Dashboard screen matching the attached design
 class DashboardScreen extends StatefulWidget {
@@ -18,13 +21,16 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final ProductService _productService = ProductService();
   final CustomerService _customerService = CustomerService();
+  final ExpenseService _expenseService = ExpenseService();
   String _currencySymbol = '\$';
   int _totalProducts = 0;
   int _lowStockCount = 0;
   double _creditDue = 0.0;
   double _todaySales = 0.0;
+  double _todayExpenses = 0.0;
   bool _isLoading = true;
   List<Transaction> _recentTransactions = [];
+  List<Expense> _recentExpenses = [];
 
   @override
   void initState() {
@@ -38,20 +44,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final products = await _productService.getAllProducts();
       final customers = await _customerService.getAllCustomers();
       
-      final lowStock = products.where((p) => p.isLowStock).length;
+      final lowStock = products.where((p) => p.isLowStock).toList();
       final creditDue = customers.fold(0.0, (sum, c) => sum + (c.balance > 0 ? c.balance : 0));
       final todaySales = await _customerService.getTodaySales();
       final recentTransactions = await _customerService.getRecentTransactions(limit: 3);
       
+      // Load today's expenses
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
+      final todayExpenses = await _expenseService.getAllExpenses(
+        startDate: startOfDay,
+        endDate: endOfDay,
+      );
+      final totalTodayExpenses = todayExpenses.fold(0.0, (sum, e) => sum + e.amount);
+      final recentExpenses = todayExpenses.take(3).toList();
+      
       setState(() {
         _currencySymbol = settings.currencySymbol;
         _totalProducts = products.length;
-        _lowStockCount = lowStock;
+        _lowStockCount = lowStock.length;
         _creditDue = creditDue;
         _todaySales = todaySales;
+        _todayExpenses = totalTodayExpenses;
         _recentTransactions = recentTransactions;
+        _recentExpenses = recentExpenses;
         _isLoading = false;
       });
+      
+      // Check and notify for low stock products
+      if (lowStock.isNotEmpty) {
+        await NotificationService.instance.checkLowStockAndNotify(products);
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -62,7 +86,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _onNavTap(int index) {
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+        // Already on dashboard, just refresh
+        _loadData();
         break;
       case 1:
         Navigator.pushReplacementNamed(context, AppRoutes.pos);
@@ -155,28 +180,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Stack(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.notifications_none, color: Color(0xFF1A1A1A)),
+                        icon: Icon(
+                          _lowStockCount > 0
+                              ? Icons.notifications
+                              : Icons.notifications_none,
+                          color: const Color(0xFF1A1A1A),
+                        ),
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No new notifications'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                          // Navigate to notifications screen
+                          Navigator.pushNamed(context, '/notifications');
                         },
                       ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
+                      if (_lowStockCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -303,32 +330,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // Quick Actions
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Quick Actions',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A1A1A),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Quick actions customization coming soon'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              'Edit',
-                              style: TextStyle(color: Color(0xFF2196F3)),
-                            ),
-                          ),
-                        ],
+                      child: const Text(
+                        'Quick Actions',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -371,6 +379,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     const SizedBox(height: 24),
 
+                    // Today's Expenses Card (if any)
+                    if (_todayExpenses > 0)
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.receipt, color: Colors.orange.shade700),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Today\'s Expenses',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.orange.shade900,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$_currencySymbol${_todayExpenses.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushNamed(context, AppRoutes.expenses);
+                              },
+                              child: const Text('View'),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    if (_todayExpenses > 0) const SizedBox(height: 24),
+
                     // Recent Activity
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -400,7 +458,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _recentTransactions.isEmpty
+                      child: _recentTransactions.isEmpty && _recentExpenses.isEmpty
                           ? Container(
                               padding: const EdgeInsets.all(32),
                               decoration: BoxDecoration(
@@ -428,12 +486,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             )
                           : Column(
-                              children: _recentTransactions.map((transaction) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _buildTransactionActivityCard(transaction),
-                                );
-                              }).toList(),
+                              children: [
+                                // Show recent transactions
+                                ..._recentTransactions.map((transaction) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: _buildTransactionActivityCard(transaction),
+                                  );
+                                }).toList(),
+                                // Show recent expenses
+                                ..._recentExpenses.map((expense) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: _buildExpenseActivityCard(expense),
+                                  );
+                                }).toList(),
+                              ],
                             ),
                     ),
                     const SizedBox(height: 24),
@@ -688,6 +756,93 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   color: statusColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpenseActivityCard(Expense expense) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.receipt, color: Colors.orange, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  expense.description,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      expense.category,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatActivityDate(expense.date),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${_currencySymbol}${expense.amount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Expense',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange,
                   fontWeight: FontWeight.w500,
                 ),
               ),

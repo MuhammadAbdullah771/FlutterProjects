@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/product_service.dart';
@@ -287,11 +288,26 @@ class _ProductListScreenState extends State<ProductListScreen> {
             color: Colors.grey[200],
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
-            Icons.image,
-            color: Colors.grey,
-            size: 30,
-          ),
+          child: product.imagePath != null && product.imagePath!.isNotEmpty
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(product.imagePath!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.image,
+                        color: Colors.grey,
+                        size: 30,
+                      );
+                    },
+                  ),
+                )
+              : const Icon(
+                  Icons.image,
+                  color: Colors.grey,
+                  size: 30,
+                ),
         ),
         title: Text(
           product.name,

@@ -41,6 +41,12 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
     try {
       final amount = double.parse(_amountController.text);
 
+      // Validate payment amount
+      if (amount <= 0) {
+        throw Exception('Payment amount must be greater than zero');
+      }
+
+      // Record the payment (this will automatically update customer balance)
       await _customerService.recordPayment(
         customerId: widget.customer.id!,
         amount: amount,
@@ -53,12 +59,23 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
             : null,
       );
 
+      // Verify balance was updated
+      final updatedCustomer = await _customerService.getCustomerById(widget.customer.id!);
+      final newBalance = updatedCustomer?.balance ?? widget.customer.balance;
+      final oldBalance = widget.customer.balance;
+
       if (mounted) {
         Navigator.pop(context, true); // Return true to indicate success
+        
+        // Show success message with balance update info
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment recorded successfully'),
+          SnackBar(
+            content: Text(
+              'Payment of \$${amount.toStringAsFixed(2)} recorded successfully.\n'
+              'Balance: \$${oldBalance.toStringAsFixed(2)} → \$${newBalance.toStringAsFixed(2)}',
+            ),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
           ),
         );
       }

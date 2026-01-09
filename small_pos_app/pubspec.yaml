@@ -74,6 +74,12 @@ dependencies:
   
   # Shared preferences for storing quick actions
   shared_preferences: ^2.2.2
+  
+  # App icon generation
+  flutter_launcher_icons: ^0.13.1
+  
+  # Local notifications
+  flutter_local_notifications: ^17.2.2
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,7 @@
 /// Application routes
 class AppRoutes {
   static const String dashboard = '/';
+  static const String notifications = '/notifications';
   static const String login = '/login';
   static const String inventory = '/inventory';
   static const String pos = '/pos';

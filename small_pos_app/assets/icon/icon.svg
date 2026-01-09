@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shadowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0E0E0;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#E0E0E0;stop-opacity:0.1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Shadow -->
+  <ellipse cx="256" cy="470" rx="220" ry="30" fill="#E0E0E0" opacity="0.3"/>
+  
+  <!-- White outer square with rounded corners -->
+  <rect x="56" y="56" width="400" height="400" rx="80" ry="80" fill="#FFFFFF" stroke="none"/>
+  
+  <!-- Light green inner square with rounded corners -->
+  <rect x="96" y="96" width="320" height="320" rx="50" ry="50" fill="#81C784"/>
+  
+  <!-- Light green handle/loop at top -->
+  <path d="M 216 96 Q 256 76 296 96" stroke="#81C784" stroke-width="20" fill="none" stroke-linecap="round"/>
+  <ellipse cx="256" cy="96" rx="40" ry="20" fill="#81C784"/>
+  
+  <!-- Yellow circle -->
+  <circle cx="256" cy="256" r="100" fill="#FFD54F"/>
+  
+  <!-- Black dollar sign -->
+  <text x="256" y="280" font-family="Arial, sans-serif" font-size="120" font-weight="bold" fill="#1A1A1A" text-anchor="middle" alignment-baseline="middle">$</text>
+</svg>
+

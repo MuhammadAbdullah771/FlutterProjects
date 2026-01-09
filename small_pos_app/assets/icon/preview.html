@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>App Icon Preview</title>
+    <style>
+        body {
+            background: #E0E0E0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .icon-container {
+            position: relative;
+            width: 512px;
+            height: 512px;
+        }
+        .shadow {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 440px;
+            height: 60px;
+            background: rgba(224, 224, 224, 0.3);
+            border-radius: 50%;
+        }
+        .icon {
+            position: relative;
+            width: 512px;
+            height: 512px;
+            background: white;
+            border-radius: 80px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .inner-square {
+            position: absolute;
+            top: 80px;
+            left: 80px;
+            width: 352px;
+            height: 352px;
+            background: #81C784;
+            border-radius: 50px;
+        }
+        .handle {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 40px;
+            background: #81C784;
+            border-radius: 40px 40px 0 0;
+        }
+        .yellow-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            background: #FFD54F;
+            border-radius: 50%;
+        }
+        .dollar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            font-weight: bold;
+            color: #1A1A1A;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="icon-container">
+        <div class="shadow"></div>
+        <div class="icon">
+            <div class="inner-square"></div>
+            <div class="handle"></div>
+            <div class="yellow-circle"></div>
+            <div class="dollar">$</div>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/product_model.dart';
 import '../database/product_database.dart';
+import '../../core/services/notification_service.dart';
 
 /// Service for managing products (online and offline)
 class ProductService {
@@ -17,40 +18,49 @@ class ProductService {
     }
   }
 
-  // Create product (offline-first)
+  // Create product (offline-first) - optimized for speed
   Future<String> createProduct(Product product) async {
     try {
-      // Save locally first
+      // Save locally first (fast, no network delay)
       final id = await _localDB.createProduct(product);
 
-      // Try to sync online
-      if (await _isOnline()) {
-        try {
-          final response = await _supabase
-              .from('products')
-              .insert(product.toSupabaseMap())
-              .select()
-              .single();
+      // Sync online in background (non-blocking)
+      _syncProductToCloud(product.copyWith(id: id)).catchError((e) {
+        print('Background sync failed: $e');
+      });
 
-          if (response['id'] != null) {
-            final supabaseId = response['id'].toString();
-            // Update local record with Supabase ID and mark as synced
-            final updatedProduct = product.copyWith(
-              id: supabaseId,
-              isSynced: true,
-            );
-            await _localDB.updateProduct(updatedProduct);
-            return supabaseId;
-          }
-        } catch (e) {
-          // If online sync fails, product is saved locally
-          print('Failed to sync product online: $e');
-        }
+      // Check for low stock and notify (non-blocking)
+      final createdProduct = product.copyWith(id: id);
+      if (createdProduct.isLowStock) {
+        NotificationService.instance
+            .showLowStockNotification(createdProduct)
+            .catchError((e) => print('Notification error: $e'));
       }
 
       return id;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  // Background sync helper
+  Future<void> _syncProductToCloud(Product product) async {
+    if (!await _isOnline()) return;
+
+    try {
+      final response = await _supabase
+          .from('products')
+          .insert(product.toSupabaseMap())
+          .select()
+          .single();
+
+      if (response['id'] != null) {
+        final supabaseId = response['id'].toString();
+        final updatedProduct = product.copyWith(id: supabaseId, isSynced: true);
+        await _localDB.updateProduct(updatedProduct);
+      }
+    } catch (e) {
+      print('Background sync failed: $e');
     }
   }
 
@@ -100,10 +110,14 @@ class ProductService {
 
           // Mark as synced
           await _localDB.markAsSynced(product.id!);
-          return true;
         } catch (e) {
           print('Failed to sync product update online: $e');
         }
+      }
+
+      // Check for low stock and notify
+      if (product.isLowStock) {
+        await NotificationService.instance.showLowStockNotification(product);
       }
 
       return true;

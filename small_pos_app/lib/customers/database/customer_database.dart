@@ -184,6 +184,9 @@ class CustomerDatabase {
   }
 
   // Calculate and update customer balance from transactions
+  // Balance = Sum of all debits (sales) - Sum of all credits (payments)
+  // Positive balance = customer owes money
+  // Negative balance = customer has credit/overpaid
   Future<void> _updateCustomerBalance(
     sqflite.Database db,
     String customerId,
@@ -192,6 +195,7 @@ class CustomerDatabase {
       'transactions',
       where: 'customer_id = ?',
       whereArgs: [customerId],
+      orderBy: 'created_at ASC', // Process in chronological order
     );
 
     double balance = 0.0;
@@ -200,12 +204,18 @@ class CustomerDatabase {
     for (var map in transactions) {
       final transaction = Transaction.fromMap(map);
       if (transaction.type == TransactionType.debit) {
+        // Debit = Sale = Customer owes money (increase balance)
         balance += transaction.amount;
         totalSpent += transaction.amount;
-      } else {
+      } else if (transaction.type == TransactionType.credit) {
+        // Credit = Payment = Customer paid money (decrease balance)
         balance -= transaction.amount;
       }
     }
+
+    // Ensure balance is never negative (if overpaid, set to 0)
+    // Actually, let's allow negative balance to show credit
+    // balance = balance < 0 ? 0 : balance;
 
     await db.update(
       'customers',

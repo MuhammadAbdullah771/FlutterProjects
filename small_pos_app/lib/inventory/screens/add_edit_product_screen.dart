@@ -30,7 +30,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _quantityController = TextEditingController();
   final _lowStockController = TextEditingController();
 
-  bool _isLoading = false;
   File? _productImage;
   List<String> _categories = [];
   String? _selectedCategory;
@@ -152,24 +151,35 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
+    // Quick validation without loading indicator
     try {
       final sku = _skuController.text.trim().toUpperCase();
       String? savedImagePath;
 
-      // Save image to persistent storage if a new image was selected
+      // Save image in background if needed (non-blocking for new products)
       if (_productImage != null) {
-        // If editing and no new image selected, keep existing image path
         if (widget.product == null || _productImage!.path != widget.product!.imagePath) {
-          savedImagePath = await _saveImageToPersistentStorage(_productImage, sku);
+          // For new products, save image in background
+          if (widget.product == null) {
+            // Quick save first, then update image path
+            savedImagePath = null; // Will be updated after save
+            _saveImageToPersistentStorage(_productImage, sku).then((path) {
+              if (path != null && mounted) {
+                // Update product with image path in background
+                _productService.getProductBySku(sku).then((product) {
+                  if (product != null) {
+                    _productService.updateProduct(product.copyWith(imagePath: path));
+                  }
+                });
+              }
+            });
+          } else {
+            savedImagePath = await _saveImageToPersistentStorage(_productImage, sku);
+          }
         } else {
           savedImagePath = widget.product!.imagePath;
         }
       } else if (widget.product != null) {
-        // Keep existing image path if editing and no new image selected
         savedImagePath = widget.product!.imagePath;
       }
 
@@ -186,7 +196,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       );
 
       if (widget.product == null) {
-        // Check if SKU already exists
+        // Quick SKU check
         final existing = await _productService.getProductBySku(product.sku);
         if (existing != null) {
           if (mounted) {
@@ -197,33 +207,40 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           return;
         }
 
+        // Quick save - no loading indicator
         await _productService.createProduct(product);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Product created successfully')),
+            const SnackBar(
+              content: Text('Product created successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
           );
-          Navigator.pop(context);
+          Navigator.pop(context, true); // Return true to refresh list
         }
       } else {
+        // Update product
         await _productService.updateProduct(product);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Product updated successfully')),
+            const SnackBar(
+              content: Text('Product updated successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
           );
-          Navigator.pop(context);
+          Navigator.pop(context, true); // Return true to refresh list
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
@@ -711,7 +728,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveProduct,
+                  onPressed: _saveProduct,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2196F3),
                     foregroundColor: Colors.white,
@@ -721,22 +738,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          widget.product == null ? 'Save Product' : 'Update Product',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                  child: Text(
+                    widget.product == null ? 'Save Product' : 'Update Product',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
 

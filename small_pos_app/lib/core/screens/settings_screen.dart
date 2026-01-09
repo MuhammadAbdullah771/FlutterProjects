@@ -9,6 +9,7 @@ import '../services/backup_service.dart';
 import '../../auth/auth_service.dart';
 import '../routes.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'printer_setup_screen.dart';
 
 /// Settings screen with backup, theme, and pricing options
 class SettingsScreen extends StatefulWidget {
@@ -714,9 +715,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: Colors.grey,
                     ),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Printer setup coming soon'),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrinterSetupScreen(),
                         ),
                       );
                     },
@@ -890,7 +892,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // App Version
             Center(
               child: Text(
-                'Smart POS v2.4.0 (Build 492)',
+                'VendoraX POS v2.4.0 (Build 492)',
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ),

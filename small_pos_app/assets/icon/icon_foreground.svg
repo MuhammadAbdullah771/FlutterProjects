@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Light green inner square with rounded corners -->
+  <rect x="96" y="96" width="320" height="320" rx="50" ry="50" fill="#81C784"/>
+  
+  <!-- Light green handle/loop at top -->
+  <path d="M 216 96 Q 256 76 296 96" stroke="#81C784" stroke-width="20" fill="none" stroke-linecap="round"/>
+  <ellipse cx="256" cy="96" rx="40" ry="20" fill="#81C784"/>
+  
+  <!-- Yellow circle -->
+  <circle cx="256" cy="256" r="100" fill="#FFD54F"/>
+  
+  <!-- Black dollar sign -->
+  <text x="256" y="280" font-family="Arial, sans-serif" font-size="120" font-weight="bold" fill="#1A1A1A" text-anchor="middle" alignment-baseline="middle">$</text>
+</svg>
+
