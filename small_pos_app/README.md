@@ -1,4 +1,4 @@
-![1](https://github.com/user-attachments/assets/fe489755-70a2-417f-815d-6a2dadb72a3d)
+
 
 # Smart POS & Full Inventory Management App
 
