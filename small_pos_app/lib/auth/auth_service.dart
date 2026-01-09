@@ -14,6 +14,7 @@ class AuthService {
   static bool get isAuthenticated => _client.auth.currentUser != null;
 
   /// Sign in with email and password
+  /// Throws custom exceptions for better error handling
   static Future<AuthResponse> signInWithEmail({
     required String email,
     required String password,
@@ -23,8 +24,66 @@ class AuthService {
         email: email,
         password: password,
       );
-    } catch (e) {
+    } on AuthException catch (e) {
+      // Supabase returns "Invalid login credentials" for both cases (security)
+      // We'll check if email exists by attempting password reset
+      // This is a workaround since Supabase doesn't expose user existence directly
+      final errorMessage = e.message.toLowerCase();
+      
+      // Check if it's an invalid credentials error
+      if (errorMessage.contains('invalid') && 
+          (errorMessage.contains('login') || errorMessage.contains('credentials'))) {
+        // Try to check if email exists by attempting password reset
+        // Note: This might send an email, but it's the only way to check
+        try {
+          await _client.auth.resetPasswordForEmail(email);
+          // If password reset succeeds, email exists but password is wrong
+          throw AuthException(
+            'Invalid Password',
+            statusCode: 'invalid_password',
+          );
+        } on AuthException catch (resetError) {
+          // If password reset fails with "user not found", email doesn't exist
+          final resetMsg = resetError.message.toLowerCase();
+          if (resetMsg.contains('user not found') || 
+              resetMsg.contains('email not found') ||
+              resetMsg.contains('no user')) {
+            throw AuthException(
+              'Account not existing',
+              statusCode: 'user_not_found',
+            );
+          }
+          // Otherwise, assume invalid password (more common case)
+          throw AuthException(
+            'Invalid Password',
+            statusCode: 'invalid_password',
+          );
+        } catch (_) {
+          // If we can't determine, default to invalid password
+          throw AuthException(
+            'Invalid Password',
+            statusCode: 'invalid_password',
+          );
+        }
+      }
+      
+      // Check for explicit "user not found" errors
+      if (errorMessage.contains('user not found') ||
+          errorMessage.contains('email not found') ||
+          errorMessage.contains('no user')) {
+        throw AuthException(
+          'Account not existing',
+          statusCode: 'user_not_found',
+        );
+      }
+      
+      // Re-throw original error if we can't determine
       rethrow;
+    } catch (e) {
+      if (e is AuthException) {
+        rethrow;
+      }
+      throw AuthException('Login failed: ${e.toString()}');
     }
   }
 

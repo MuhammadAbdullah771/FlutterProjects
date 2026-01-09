@@ -95,19 +95,47 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
+        // Show specific error messages
+        String errorMessage;
+        if (e.statusCode == 'user_not_found' || 
+            e.message.toLowerCase().contains('account not existing') ||
+            e.message.toLowerCase().contains('user not found')) {
+          errorMessage = 'Account not existing';
+        } else if (e.statusCode == 'invalid_password' ||
+                   e.message.toLowerCase().contains('invalid password')) {
+          errorMessage = 'Invalid Password';
+        } else {
+          errorMessage = e.message;
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        // Parse error message for better user experience
+        String errorMessage = e.toString();
+        if (errorMessage.toLowerCase().contains('user not found') ||
+            errorMessage.toLowerCase().contains('email not found') ||
+            errorMessage.toLowerCase().contains('no user')) {
+          errorMessage = 'Account not existing';
+        } else if (errorMessage.toLowerCase().contains('invalid password') ||
+                   errorMessage.toLowerCase().contains('wrong password') ||
+                   (errorMessage.toLowerCase().contains('invalid') && 
+                    errorMessage.toLowerCase().contains('credentials'))) {
+          errorMessage = 'Invalid Password';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred: ${e.toString()}'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }

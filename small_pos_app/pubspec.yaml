@@ -66,6 +66,12 @@ dependencies:
   # File sharing for backup
   share_plus: ^7.2.1
   
+  # File picker for import
+  file_picker: ^8.0.0+1
+  
+  # URL launcher for email
+  url_launcher: ^6.2.5
+  
   # HTTP for API calls
   http: ^1.1.2
   

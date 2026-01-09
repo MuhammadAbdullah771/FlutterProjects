@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:convert';
 import '../providers/theme_provider.dart';
 import '../models/app_settings.dart';
 import '../database/settings_database.dart';
@@ -272,6 +277,241 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Signed out from Google account')),
       );
+  }
+
+  /// Import backup from device file picker
+  Future<void> _importFromDevice() async {
+    try {
+      // Pick backup file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Select Backup File',
+      );
+
+      if (result == null || result.files.single.path == null) {
+        // User canceled
+        return;
+      }
+
+      final filePath = result.files.single.path!;
+      final file = File(filePath);
+
+      // Read file content
+      final fileContent = await file.readAsString();
+      final data = jsonDecode(fileContent) as Map<String, dynamic>;
+
+      // Confirm import
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Import Backup'),
+          content: const Text(
+            'This will replace all current data with the backup file. This action cannot be undone. Are you sure?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      setState(() {
+        _isRestoring = true;
+      });
+
+      // Import data
+      await BackupService.instance.importData(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backup imported successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Reload settings
+        await _loadSettings();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+        });
+      }
+    }
+  }
+
+  /// Show export options dialog
+  Future<void> _showExportOptions() async {
+    final option = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export Backup'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.save, color: Color(0xFF2196F3)),
+              title: const Text('Save to Device'),
+              subtitle: const Text('Save backup file to phone storage'),
+              onTap: () => Navigator.pop(context, 'device'),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.email, color: Color(0xFF2196F3)),
+              title: const Text('Send via Email'),
+              subtitle: const Text('Email backup file to yourself'),
+              onTap: () => Navigator.pop(context, 'email'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (option == 'device') {
+      await _exportToDevice();
+    } else if (option == 'email') {
+      await _exportViaEmail();
+    }
+  }
+
+  /// Export backup to device storage
+  Future<void> _exportToDevice() async {
+    try {
+      setState(() {
+        _isBackingUp = true;
+      });
+
+      // Export data
+      final data = await BackupService.instance.exportData();
+      final jsonString = jsonEncode(data);
+      final bytes = utf8.encode(jsonString);
+
+      // Get documents directory
+      final directory = await getApplicationDocumentsDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'vendora_pos_backup_$timestamp.json';
+      final filePath = '${directory.path}/$fileName';
+      final file = File(filePath);
+
+      // Write file
+      await file.writeAsBytes(bytes);
+
+      // Share file (allows user to save to desired location)
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        text: 'VendoraX POS Backup File',
+        subject: 'POS Backup',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup saved to: $filePath\nYou can now save it to your desired location.'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBackingUp = false;
+        });
+      }
+    }
+  }
+
+  /// Export backup via email
+  Future<void> _exportViaEmail() async {
+    try {
+      setState(() {
+        _isBackingUp = true;
+      });
+
+      // Export data
+      final data = await BackupService.instance.exportData();
+      final jsonString = jsonEncode(data);
+      final bytes = utf8.encode(jsonString);
+
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'vendora_pos_backup_$timestamp.json';
+      final filePath = '${directory.path}/$fileName';
+      final file = File(filePath);
+
+      // Write file
+      await file.writeAsBytes(bytes);
+
+      // Share via email
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        text: 'VendoraX POS Backup File\n\nThis is an automated backup of your POS data.',
+        subject: 'VendoraX POS Backup - ${DateTime.now().toString().substring(0, 10)}',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backup file ready to send via email'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBackingUp = false;
+        });
+      }
+    }
   }
 
   Future<void> _restoreNow() async {
@@ -586,13 +826,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         size: 24,
                       ),
                     ),
-                    title: const Text('Restore Data'),
+                    title: const Text('Restore from Google Drive'),
                     trailing: const Icon(
                       Icons.arrow_forward_ios,
                       size: 16,
                       color: Colors.grey,
                     ),
                     onTap: _isRestoring ? null : _restoreNow,
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.file_upload,
+                        color: Colors.green[700],
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text('Import Backup from Device'),
+                    subtitle: const Text('Select backup file from phone'),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    onTap: _importFromDevice,
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.file_download,
+                        color: Colors.purple[700],
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text('Export Backup'),
+                    subtitle: const Text('Save to device or email'),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    onTap: _showExportOptions,
                   ),
                 ], // children
               ), // Column

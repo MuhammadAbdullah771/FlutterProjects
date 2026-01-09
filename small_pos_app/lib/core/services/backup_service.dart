@@ -34,7 +34,7 @@ class BackupService {
   // Google Drive API OAuth Client ID
   // ============================================================================
   static const String _embeddedClientId =
-      '39984977372-5p4nbbjeavnatjfdcnm4bctocgobd0ha.apps.googleusercontent.com';
+      '9984977372-5p4nbbjeavnatjfdcnm4bctocgobd0ha.apps.googleusercontent.com';
 
   GoogleSignIn? _googleSignIn;
   drive.DriveApi? _driveApi;
@@ -177,25 +177,34 @@ class BackupService {
         // This is an Android OAuth configuration error
         throw Exception(
           'Google Sign-In Error 10 - OAuth Consent Screen Not Configured\n\n'
-          'Your Client ID is correct, but you need to configure OAuth consent screen:\n\n'
+          'For Play Store publication, configure OAuth consent screen:\n\n'
           'STEP 1: Go to Google Cloud Console\n'
           'https://console.cloud.google.com/apis/credentials/consent?project=ordinal-rig-409609\n\n'
-          'STEP 2: Configure OAuth Consent Screen\n'
+          'STEP 2: Configure OAuth Consent Screen (External - for Play Store)\n'
           '1. Click "OAuth consent screen"\n'
-          '2. Choose "External" (unless you have Google Workspace)\n'
-          '3. Fill in App name: "Small POS App"\n'
-          '4. Add your email: abdullah.nadeem492@gmail.com\n'
-          '5. Click "Save and Continue"\n\n'
-          'STEP 3: Add Test Users\n'
+          '2. Choose "External" (required for public Play Store apps)\n'
+          '3. Fill required fields:\n'
+          '   - App name: "VendoraX POS"\n'
+          '   - User support email: abdullah.nadeem492@gmail.com\n'
+          '   - Privacy policy URL: (REQUIRED for Play Store)\n'
+          '     Create free at: https://www.privacypolicygenerator.info/\n'
+          '4. Click "SAVE AND CONTINUE"\n\n'
+          'STEP 3: Add Scopes\n'
+          '1. Click "ADD OR REMOVE SCOPES"\n'
+          '2. Add: drive.file and drive.appdata\n'
+          '3. Click "UPDATE" then "SAVE AND CONTINUE"\n\n'
+          'STEP 4: Add Test Users (for development)\n'
           '1. Scroll to "Test users" section\n'
           '2. Click "+ ADD USERS"\n'
           '3. Add: abdullah.nadeem492@gmail.com\n'
-          '4. Click "SAVE"\n\n'
-          'STEP 4: Enable Google Drive API\n'
-          '1. Go to: APIs & Services → Library\n'
+          '4. Click "SAVE AND CONTINUE"\n\n'
+          'STEP 5: Enable Google Drive API\n'
+          '1. Go to: APIs & Services -> Library\n'
           '2. Search "Google Drive API"\n'
           '3. Click "Enable"\n\n'
-          'Then try signing in again!',
+          'NOTE: For Play Store, you may need app verification (FREE, takes 4-6 weeks).\n'
+          'You can publish to "Testing" track first (up to 100 users).\n\n'
+          'See GOOGLE_OAUTH_SETUP_PLAYSTORE.md for detailed instructions.',
         );
       } else if (errorMessage.contains('network') ||
           errorMessage.contains('Network')) {
