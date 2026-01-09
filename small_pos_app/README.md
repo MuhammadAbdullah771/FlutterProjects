@@ -1,3 +1,5 @@
+![1](https://github.com/user-attachments/assets/fe489755-70a2-417f-815d-6a2dadb72a3d)
+
 # Smart POS & Full Inventory Management App
 
 A comprehensive Point of Sale (POS) and Inventory Management application built with Flutter and Supabase. This application provides a complete solution for managing sales, inventory, customers, and business reports.
