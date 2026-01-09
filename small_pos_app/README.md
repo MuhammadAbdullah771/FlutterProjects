@@ -1,8 +1,26 @@
+| Screen 1 | Screen 2 | Screen 3 |
+|---------|----------|----------|
+| ![1](https://github.com/user-attachments/assets/cf609e8e-5341-4c90-ac70-4174271a064b) | ![2](https://github.com/user-attachments/assets/7fb84a28-4314-4720-9292-761d06c2ba9d) | ![3](https://github.com/user-attachments/assets/03b0da51-f780-4026-af3c-88def1786a44) |
+
+| Screen 4 | Screen 5 | Screen 6 |
+|---------|----------|----------|
+| ![4](https://github.com/user-attachments/assets/4860abb7-3ce8-449c-8331-bbb2624ed40e) | ![5](https://github.com/user-attachments/assets/454368bb-c281-4a36-84c8-05546c19c82b) | ![6](https://github.com/user-attachments/assets/7cad120e-0049-4e58-adae-7cef4e9ef480) |
+
+| Screen 7 | Screen 8 | Screen 9 |
+|---------|----------|----------|
+| ![7](https://github.com/user-attachments/assets/2264e566-1387-47ac-9a71-5dd59be8000e) | ![8](https://github.com/user-attachments/assets/65a70ede-f976-4299-9331-33441729642b) | ![9](https://github.com/user-attachments/assets/656f88b3-6519-4502-b29f-1ba0728cb0f9) |
+
+| Screen 10 |
+|-----------|
+| ![10](https://github.com/user-attachments/assets/79858998-965d-4727-9835-fb8f836f45d5) |
+
+
 
 
 # Smart POS & Full Inventory Management App
 
 A comprehensive Point of Sale (POS) and Inventory Management application built with Flutter and Supabase. This application provides a complete solution for managing sales, inventory, customers, and business reports.
+
 
 ## 📋 Table of Contents
 
