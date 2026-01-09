@@ -15,6 +15,11 @@
 | ![10](https://github.com/user-attachments/assets/79858998-965d-4727-9835-fb8f836f45d5) |
 
 
+Demo Video 
+https://github.com/user-attachments/assets/137e2bb3-1e69-4c3d-b6cf-8295554f9928
+
+
+
 
 
 # Smart POS & Full Inventory Management App
